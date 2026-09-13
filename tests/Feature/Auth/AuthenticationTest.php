@@ -19,7 +19,7 @@ test('login screen can be rendered', function () {
 
 test('users can authenticate with github', function () {
     $githubUser = (new GitHubUser)->map([
-        'id' => '123456',
+        'id' => 123456,
         'nickname' => 'octocat',
         'name' => 'The Octocat',
         'email' => 'octocat@github.com',
@@ -37,6 +37,49 @@ test('users can authenticate with github', function () {
         ->and($user->email)->toBe('octocat@github.com')
         ->and($user->email_verified_at)->not->toBeNull();
     $response->assertRedirect(route('dashboard', absolute: false));
+});
+
+test('existing users can authenticate when github returns their id as an integer', function () {
+    $user = User::factory()->create([
+        'github_id' => '123456',
+        'github_login' => 'octocat',
+        'email' => 'octocat@github.com',
+    ]);
+    $githubUser = (new GitHubUser)->map([
+        'id' => 123456,
+        'nickname' => 'octocat',
+        'name' => 'The Octocat',
+        'email' => 'octocat@github.com',
+        'avatar' => null,
+    ]);
+    Socialite::shouldReceive('driver->user')->once()->andReturn($githubUser);
+
+    $response = $this->get(route('github.callback'));
+
+    $response->assertRedirect(route('dashboard', absolute: false));
+    $this->assertAuthenticatedAs($user);
+    expect(User::query()->count())->toBe(1);
+});
+
+test('an email linked to a different github account is rejected', function () {
+    $user = User::factory()->create([
+        'github_id' => '654321',
+        'email' => 'octocat@github.com',
+    ]);
+    $githubUser = (new GitHubUser)->map([
+        'id' => 123456,
+        'nickname' => 'octocat',
+        'name' => 'The Octocat',
+        'email' => 'octocat@github.com',
+        'avatar' => null,
+    ]);
+    Socialite::shouldReceive('driver->user')->once()->andReturn($githubUser);
+
+    $response = $this->get(route('github.callback'));
+
+    $response->assertConflict();
+    $this->assertGuest();
+    expect($user->fresh()->github_id)->toBe('654321');
 });
 
 test('users cannot authenticate with a password', function () {

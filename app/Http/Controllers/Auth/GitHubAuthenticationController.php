@@ -50,11 +50,12 @@ class GitHubAuthenticationController extends Controller
         }
 
         $githubUser = $provider->user();
+        $githubId = (string) $githubUser->getId();
         $email = $githubUser->getEmail();
 
         abort_if($email === null, 422, 'Your GitHub account must have an email address.');
 
-        $user = User::query()->where('github_id', $githubUser->getId())->first();
+        $user = User::query()->where('github_id', $githubId)->first();
 
         if ($installationPending && Auth::check() && Auth::id() !== $user?->id) {
             abort(403, 'Install the GitHub App with the same account you used to sign in.');
@@ -63,13 +64,13 @@ class GitHubAuthenticationController extends Controller
         $user ??= User::query()->where('email', $email)->firstOrNew();
 
         abort_if(
-            $user->github_id !== null && $user->github_id !== $githubUser->getId(),
+            $user->github_id !== null && $user->github_id !== $githubId,
             409,
             'That email address is already linked to another GitHub account.',
         );
 
         $user->forceFill([
-            'github_id' => $githubUser->getId(),
+            'github_id' => $githubId,
             'github_login' => $githubUser->getNickname(),
             'avatar_url' => $githubUser->getAvatar(),
             'name' => $githubUser->getName() ?: $githubUser->getNickname() ?: $email,
