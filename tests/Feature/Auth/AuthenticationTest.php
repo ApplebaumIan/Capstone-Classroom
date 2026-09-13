@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\LocalDevelopmentSeeder;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Facades\Socialite;
@@ -14,7 +16,55 @@ test('login screen can be rendered', function () {
     $response->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('auth/login')
+            ->where('localAuthEnabled', false)
             ->missing('canResetPassword'));
+});
+
+test('local login choices are exposed in the local environment', function () {
+    $this->app['env'] = 'local';
+
+    $this->get(route('login'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('auth/login')
+            ->where('localAuthEnabled', true));
+});
+
+test('local teacher bypass authenticates into the teacher dashboard', function () {
+    $this->app['env'] = 'local';
+    $this->withoutMiddleware(PreventRequestForgery::class);
+    $this->seed(LocalDevelopmentSeeder::class);
+
+    $response = $this->post(route('local.login', 'teacher'));
+
+    $response->assertRedirect(route('dashboard'));
+    $teacher = User::query()->where('email', 'teacher@capstone.local')->firstOrFail();
+    $this->assertAuthenticatedAs($teacher);
+    $this->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page->where('mode', 'teacher'));
+});
+
+test('local student bypass authenticates into the student dashboard', function () {
+    $this->app['env'] = 'local';
+    $this->withoutMiddleware(PreventRequestForgery::class);
+    $this->seed(LocalDevelopmentSeeder::class);
+
+    $response = $this->post(route('local.login', 'student'));
+
+    $response->assertRedirect(route('dashboard'));
+    $student = User::query()->where('email', 'student@capstone.local')->firstOrFail();
+    $this->assertAuthenticatedAs($student);
+    $this->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('mode', 'student')
+            ->where('claim.name', 'Local Student')
+            ->where('claim.group.name', 'Local Demo Team'));
+});
+
+test('local authentication bypass is unavailable outside the local environment', function () {
+    $this->post(route('local.login', 'teacher'))->assertNotFound();
+
+    $this->assertGuest();
+    expect(User::query()->count())->toBe(0);
 });
 
 test('users can authenticate with github', function () {

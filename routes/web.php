@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GitHubAuthenticationController;
+use App\Http\Controllers\Auth\LocalAuthenticationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GitHubInstallationController;
 use App\Http\Controllers\GroupProvisioningController;
@@ -10,8 +11,14 @@ use App\Http\Controllers\RosterController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
-Route::inertia('/login', 'auth/login')->middleware('guest')->name('login');
+Route::inertia('/login', 'auth/login', [
+    'localAuthEnabled' => fn (): bool => app()->environment('local'),
+])->middleware('guest')->name('login');
 Route::post('/logout', [GitHubAuthenticationController::class, 'destroy'])->middleware('auth')->name('logout');
+Route::post('/auth/local/{role}', LocalAuthenticationController::class)
+    ->middleware('guest')
+    ->whereIn('role', ['teacher', 'student'])
+    ->name('local.login');
 
 Route::middleware('auth')->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
