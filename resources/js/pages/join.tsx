@@ -1,0 +1,186 @@
+import { Form, Head, usePage, usePoll } from '@inertiajs/react';
+import {
+    CheckCircle2,
+    ExternalLink,
+    Github,
+    RefreshCw,
+    UserRoundCheck,
+} from 'lucide-react';
+import InputError from '@/components/input-error';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { join } from '@/routes/classrooms';
+import { store as claimEntry } from '@/routes/roster-claims';
+
+type Props = {
+    classroom: { name: string; join_code: string };
+    claim: null | {
+        name: string;
+        sections: string;
+        group: {
+            name: string;
+            status: 'waiting' | 'provisioning' | 'ready' | 'failed';
+            error: string | null;
+            repository_url: string | null;
+            pages_url: string | null;
+        };
+    };
+    entries: Array<{ id: number; name: string; sections: string }>;
+};
+
+export default function JoinClassroom({ classroom, claim, entries }: Props) {
+    const { flash } = usePage().props;
+    usePoll(
+        10_000,
+        { only: ['claim'] },
+        { autoStart: claim?.group.status === 'provisioning' },
+    );
+
+    return (
+        <>
+            <Head title={`Join ${classroom.name}`} />
+            <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-4 md:p-8">
+                <div className="space-y-2">
+                    <Badge variant="outline">Student onboarding</Badge>
+                    <h1 className="text-3xl font-semibold tracking-tight">
+                        {classroom.name}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Select your Canvas roster entry once. Your GitHub
+                        account becomes linked to that team.
+                    </p>
+                </div>
+
+                {flash.success && (
+                    <Alert>
+                        <CheckCircle2 />
+                        <AlertTitle>Claim saved</AlertTitle>
+                        <AlertDescription>{flash.success}</AlertDescription>
+                    </Alert>
+                )}
+
+                {claim ? (
+                    <Card>
+                        <CardHeader>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                    <CardTitle>{claim.group.name}</CardTitle>
+                                    <CardDescription>
+                                        {claim.name} · {claim.sections}
+                                    </CardDescription>
+                                </div>
+                                <Badge
+                                    variant={
+                                        claim.group.status === 'failed'
+                                            ? 'destructive'
+                                            : claim.group.status === 'ready'
+                                              ? 'default'
+                                              : 'secondary'
+                                    }
+                                >
+                                    {claim.group.status === 'provisioning' && (
+                                        <RefreshCw className="animate-spin" />
+                                    )}
+                                    {claim.group.status}
+                                </Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex flex-wrap gap-3">
+                            {claim.group.repository_url && (
+                                <a
+                                    className={buttonVariants()}
+                                    href={claim.group.repository_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Github /> Repository <ExternalLink />
+                                </a>
+                            )}
+                            {claim.group.pages_url && (
+                                <a
+                                    className={buttonVariants({
+                                        variant: 'outline',
+                                    })}
+                                    href={claim.group.pages_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Project site <ExternalLink />
+                                </a>
+                            )}
+                            {claim.group.status === 'provisioning' && (
+                                <p className="text-muted-foreground w-full text-sm">
+                                    GitHub may send an organization invitation.
+                                    Accept it to activate team access.
+                                </p>
+                            )}
+                            {claim.group.error && (
+                                <p className="text-destructive w-full text-sm">
+                                    {claim.group.error}
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Find your name</CardTitle>
+                            <CardDescription>
+                                Claim cannot be changed without teacher reset.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-3">
+                            <InputError
+                                message={usePage().props.errors.roster_entry}
+                            />
+                            {entries.map((entry) => (
+                                <Form
+                                    key={entry.id}
+                                    {...claimEntry.form({
+                                        classroom: classroom.join_code,
+                                        rosterEntry: entry.id,
+                                    })}
+                                >
+                                    {({ processing }) => (
+                                        <Button
+                                            variant="outline"
+                                            className="h-auto w-full justify-between p-4 text-left"
+                                            disabled={processing}
+                                        >
+                                            <span>
+                                                <span className="block font-medium">
+                                                    {entry.name}
+                                                </span>
+                                                <span className="text-muted-foreground block text-xs">
+                                                    {entry.sections}
+                                                </span>
+                                            </span>
+                                            <UserRoundCheck />
+                                        </Button>
+                                    )}
+                                </Form>
+                            ))}
+                            {entries.length === 0 && (
+                                <p className="text-muted-foreground py-8 text-center text-sm">
+                                    No unclaimed roster entries remain.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+        </>
+    );
+}
+
+JoinClassroom.layout = {
+    breadcrumbs: [{ title: 'Join classroom', href: '#' }],
+};

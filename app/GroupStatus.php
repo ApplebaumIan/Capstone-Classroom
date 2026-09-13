@@ -1,0 +1,11 @@
+<?php
+
+namespace App;
+
+enum GroupStatus: string
+{
+    case Waiting = 'waiting';
+    case Provisioning = 'provisioning';
+    case Ready = 'ready';
+    case Failed = 'failed';
+}

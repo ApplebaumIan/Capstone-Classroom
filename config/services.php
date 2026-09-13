@@ -38,6 +38,13 @@ return [
         'client_id' => env('GITHUB_CLIENT_ID'),
         'client_secret' => env('GITHUB_CLIENT_SECRET'),
         'redirect' => rtrim((string) env('APP_URL', 'http://localhost'), '/').'/auth/github/callback',
+        'app_id' => env('GITHUB_APP_ID'),
+        'app_slug' => env('GITHUB_APP_SLUG'),
+        'private_key' => env('GITHUB_APP_PRIVATE_KEY'),
+        'api_url' => env('GITHUB_API_URL', 'https://api.github.com'),
+        'api_version' => env('GITHUB_API_VERSION', '2026-03-10'),
+        'template_owner' => env('GITHUB_TEMPLATE_OWNER', 'ApplebaumIan'),
+        'template_repository' => env('GITHUB_TEMPLATE_REPOSITORY', 'tu-cis-4398-docs-template'),
     ],
 
 ];

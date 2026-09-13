@@ -25,6 +25,9 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'github_id' => (string) fake()->unique()->randomNumber(8),
+            'github_login' => fake()->unique()->userName(),
+            'avatar_url' => fake()->imageUrl(128, 128),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
