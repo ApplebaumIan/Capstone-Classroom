@@ -1,7 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\GitHubAuthenticationController;
 use Illuminate\Support\Facades\Route;
-use Laravel\Socialite\Socialite;
 
 Route::inertia('/', 'welcome')->name('home');
 
@@ -9,14 +9,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 });
 
-Route::get('/auth/redirect', function () {
-    return Socialite::driver('github')->redirect();
-});
-
-Route::get('/auth/callback', function () {
-    $user = Socialite::driver('github')->user();
-
-    // $user->token
+Route::middleware('guest')->group(function () {
+    Route::get('/auth/github', [GitHubAuthenticationController::class, 'redirect'])
+        ->name('github.redirect');
+    Route::get('/auth/github/callback', [GitHubAuthenticationController::class, 'callback'])
+        ->name('github.callback');
 });
 
 require __DIR__.'/settings.php';

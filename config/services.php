@@ -37,7 +37,7 @@ return [
     'github' => [
         'client_id' => env('GITHUB_CLIENT_ID'),
         'client_secret' => env('GITHUB_CLIENT_SECRET'),
-        'redirect' => '/auth/callback',
+        'redirect' => rtrim((string) env('APP_URL', 'http://localhost'), '/').'/auth/github/callback',
     ],
 
 ];
