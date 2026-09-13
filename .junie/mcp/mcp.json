@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/Users/ianapplebaum/.config/herd-lite/bin/php",
+            "args": [
+                "/Users/ianapplebaum/Developer/capstone-classroom/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
