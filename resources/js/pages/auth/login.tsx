@@ -78,6 +78,6 @@ export default function Login({
 }
 
 Login.layout = {
-    title: 'Welcome back',
+    title: 'Welcome to Capstone Classroom',
     description: 'Sign in with your GitHub account to continue',
 };
