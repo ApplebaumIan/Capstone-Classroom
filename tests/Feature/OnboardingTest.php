@@ -112,8 +112,13 @@ test('student can create a team when classroom setting is enabled', function () 
     $group = $classroom->groups()->firstOrFail();
     expect($group->created_manually)->toBeTrue()
         ->and($group->rosterEntries()->firstOrFail()->claimed_by_user_id)->toBe($student->id)
-        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
+        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeTrue();
     Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
+
+    $this->get(route('dashboard'))->assertOk();
+    $this->withSession(['onboarding.pending_dashboard_classroom_id' => null])
+        ->get(route('dashboard'))
+        ->assertRedirect(route('classrooms.join', $classroom->join_code));
 });
 
 test('student can join an existing manually created team', function () {
@@ -133,7 +138,7 @@ test('student can join an existing manually created team', function () {
 
     $response->assertRedirect(route('dashboard'));
     expect($group->rosterEntries()->firstOrFail()->claimed_by_user_id)->toBe($student->id)
-        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
+        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeTrue();
     Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
 });
 
@@ -145,7 +150,9 @@ test('student onboarding lists manually created teams to join', function () {
     ]);
     $student = User::factory()->create();
 
-    $response = $this->actingAs($student)->get(route('classrooms.join', $classroom->join_code));
+    $response = $this->actingAs($student)
+        ->withSession(['onboarding.team_selection_classroom_id' => $classroom->id])
+        ->get(route('classrooms.join', $classroom->join_code));
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('available_groups.0.id', $group->id)
@@ -153,11 +160,13 @@ test('student onboarding lists manually created teams to join', function () {
         ->where('available_groups.0.student_count', 0));
 });
 
-test('student cannot join a canvas-managed team through manual team membership', function () {
+test('student cannot join a team from another classroom', function () {
     Queue::fake([ProvisionClassroomGroup::class]);
     $classroom = Classroom::factory()->installed()->create();
-    $group = ClassroomGroup::factory()->for($classroom)->create(['created_manually' => false]);
+    $otherClassroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($otherClassroom)->create();
     $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
 
     $response = $this->actingAs($student)->post(route('student-classroom-group-memberships.store', [
         $classroom->join_code,
@@ -251,8 +260,12 @@ test('student can skip roster selection for teacher linking', function () {
 
     $response = $this->actingAs($student)->post(route('pending-classroom-students.store', $classroom->join_code));
 
-    $response->assertRedirect(route('home'));
+    $response->assertRedirect(route('classrooms.join', $classroom->join_code));
     expect($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeTrue();
+    $this->get(route('classrooms.join', $classroom->join_code))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('selecting_team', true)
+            ->where('entries', []));
 });
 
 test('pending student is prompted to select a roster entry on dashboard visits', function () {
@@ -297,6 +310,34 @@ test('teacher can link a pending github student to a roster entry', function () 
     expect($entry->fresh()->claimed_by_user_id)->toBe($student->id)
         ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
     Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
+});
+
+test('canvas roster team replaces the temporary team selected by a skipped student', function () {
+    Queue::fake([ProvisionClassroomGroup::class, RemoveStudentFromGitHubTeam::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $temporaryGroup = ClassroomGroup::factory()->for($classroom)->create([
+        'created_manually' => true,
+        'github_team_slug' => 'temporary-team',
+    ]);
+    $canvasGroup = ClassroomGroup::factory()->for($classroom)->create();
+    $student = User::factory()->create(['github_login' => 'octocat']);
+    $temporaryEntry = RosterEntry::factory()->for($classroom)->for($temporaryGroup, 'group')->create([
+        'canvas_user_id' => "github-user-{$student->id}",
+        'claimed_by_user_id' => $student->id,
+        'claimed_at' => now(),
+    ]);
+    $canvasEntry = RosterEntry::factory()->for($classroom)->for($canvasGroup, 'group')->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', $student), [
+        'roster_entry_id' => $canvasEntry->id,
+    ])->assertRedirect(route('dashboard'));
+
+    $this->assertModelMissing($temporaryEntry);
+    expect($canvasEntry->fresh()->claimed_by_user_id)->toBe($student->id)
+        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
+    Queue::assertPushed(RemoveStudentFromGitHubTeam::class, fn ($job) => $job->classroomGroupId === $temporaryGroup->id && $job->githubLogin === 'octocat');
+    Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $canvasGroup->id);
 });
 
 test('teacher cannot link a github student pending in another classroom', function () {

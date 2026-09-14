@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\GroupStatus;
 use App\Jobs\ProvisionClassroomGroup;
+use App\Jobs\RemoveStudentFromGitHubTeam;
 use App\Models\Classroom;
 use App\Models\RosterEntry;
 use App\Models\User;
@@ -14,7 +15,16 @@ class ClaimRosterEntry
 {
     public function handle(User $user, Classroom $classroom, RosterEntry $rosterEntry): RosterEntry
     {
-        $entry = DB::transaction(function () use ($user, $classroom, $rosterEntry): RosterEntry {
+        $previousGroupId = null;
+        $previousTeamSlug = null;
+
+        $entry = DB::transaction(function () use (
+            $user,
+            $classroom,
+            $rosterEntry,
+            &$previousGroupId,
+            &$previousTeamSlug,
+        ): RosterEntry {
             $lockedEntry = RosterEntry::query()->lockForUpdate()->findOrFail($rosterEntry->id);
 
             if ($lockedEntry->classroom_id !== $classroom->id) {
@@ -25,8 +35,20 @@ class ClaimRosterEntry
                 throw ValidationException::withMessages(['roster_entry' => 'That roster entry has already been claimed.']);
             }
 
-            if ($classroom->rosterEntries()->where('claimed_by_user_id', $user->id)->exists()) {
+            $existingClaim = $classroom->rosterEntries()
+                ->with('group')
+                ->where('claimed_by_user_id', $user->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingClaim !== null && ! str_starts_with($existingClaim->canvas_user_id, 'github-user-')) {
                 throw ValidationException::withMessages(['roster_entry' => 'You have already claimed a roster entry.']);
+            }
+
+            if ($existingClaim !== null) {
+                $previousGroupId = $existingClaim->classroom_group_id;
+                $previousTeamSlug = $existingClaim->group->github_team_slug;
+                $existingClaim->delete();
             }
 
             $lockedEntry->update([
@@ -37,6 +59,15 @@ class ClaimRosterEntry
 
             return $lockedEntry;
         });
+
+        if (
+            $previousGroupId !== null
+            && $previousGroupId !== $entry->classroom_group_id
+            && $previousTeamSlug !== null
+            && $user->github_login !== null
+        ) {
+            RemoveStudentFromGitHubTeam::dispatch($previousGroupId, $user->github_login);
+        }
 
         $entry->load('group');
 

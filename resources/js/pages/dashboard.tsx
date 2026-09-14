@@ -455,78 +455,6 @@ export default function Dashboard({
                     </div>
                 )}
 
-                {classroom.installed && (
-                    <Card>
-                        <CardHeader>
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="space-y-1">
-                                    <CardTitle>Create a team</CardTitle>
-                                    <CardDescription>
-                                        Add a project without importing it from
-                                        Canvas.
-                                    </CardDescription>
-                                </div>
-                                <Badge variant="secondary">
-                                    Student creation{' '}
-                                    {classroom.student_team_creation_enabled
-                                        ? 'enabled'
-                                        : 'disabled'}
-                                </Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-                            <Form
-                                {...createClassroomGroup.form()}
-                                className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end"
-                            >
-                                {({ errors, processing }) => (
-                                    <>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="team-name">
-                                                Team name
-                                            </Label>
-                                            <Input
-                                                id="team-name"
-                                                name="name"
-                                                placeholder="Project Atlas"
-                                                required
-                                            />
-                                            <InputError message={errors.name} />
-                                        </div>
-                                        <Button disabled={processing}>
-                                            <Plus /> Create team
-                                        </Button>
-                                    </>
-                                )}
-                            </Form>
-                            <Form {...updateTeamCreation.form()}>
-                                {({ processing }) => (
-                                    <>
-                                        <input
-                                            type="hidden"
-                                            name="enabled"
-                                            value={
-                                                classroom.student_team_creation_enabled
-                                                    ? '0'
-                                                    : '1'
-                                            }
-                                        />
-                                        <Button
-                                            type="submit"
-                                            variant="outline"
-                                            disabled={processing}
-                                        >
-                                            <Settings2 />
-                                            {classroom.student_team_creation_enabled
-                                                ? 'Disable student creation'
-                                                : 'Enable student creation'}
-                                        </Button>
-                                    </>
-                                )}
-                            </Form>
-                        </CardContent>
-                    </Card>
-                )}
 
                 {classroom.installed &&
                     (classroom.roster_imported || classroom.roster_skipped) && (
@@ -641,6 +569,78 @@ export default function Dashboard({
                                                 </Form>
                                             ),
                                         )}
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {classroom.installed && (
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex flex-wrap items-start justify-between gap-3">
+                                            <div className="space-y-1">
+                                                <CardTitle>Create a team</CardTitle>
+                                                <CardDescription>
+                                                    Add a project without importing it from
+                                                    Canvas.
+                                                </CardDescription>
+                                            </div>
+                                            <Badge variant="secondary">
+                                                Student creation{' '}
+                                                {classroom.student_team_creation_enabled
+                                                    ? 'enabled'
+                                                    : 'disabled'}
+                                            </Badge>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+                                        <Form
+                                            {...createClassroomGroup.form()}
+                                            className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end"
+                                        >
+                                            {({ errors, processing }) => (
+                                                <>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="team-name">
+                                                            Team name
+                                                        </Label>
+                                                        <Input
+                                                            id="team-name"
+                                                            name="name"
+                                                            placeholder="Project Atlas"
+                                                            required
+                                                        />
+                                                        <InputError message={errors.name} />
+                                                    </div>
+                                                    <Button disabled={processing}>
+                                                        <Plus /> Create team
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </Form>
+                                        <Form {...updateTeamCreation.form()}>
+                                            {({ processing }) => (
+                                                <>
+                                                    <input
+                                                        type="hidden"
+                                                        name="enabled"
+                                                        value={
+                                                            classroom.student_team_creation_enabled
+                                                                ? '0'
+                                                                : '1'
+                                                        }
+                                                    />
+                                                    <Button
+                                                        type="submit"
+                                                        variant="outline"
+                                                        disabled={processing}
+                                                    >
+                                                        <Settings2 />
+                                                        {classroom.student_team_creation_enabled
+                                                            ? 'Disable student creation'
+                                                            : 'Enable student creation'}
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </Form>
                                     </CardContent>
                                 </Card>
                             )}

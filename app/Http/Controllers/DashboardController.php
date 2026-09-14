@@ -15,6 +15,15 @@ class DashboardController extends Controller
     public function __invoke(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
+        $pendingClassroom = $user->pendingClassrooms()->first();
+
+        if (
+            $pendingClassroom !== null
+            && $request->session()->get('onboarding.pending_dashboard_classroom_id') !== $pendingClassroom->id
+        ) {
+            return to_route('classrooms.join', $pendingClassroom->join_code);
+        }
+
         $claim = $user->rosterClaims()
             ->with(['classroom', 'group'])
             ->first();
@@ -31,8 +40,6 @@ class DashboardController extends Controller
                 ],
             ]);
         }
-
-        $pendingClassroom = $user->pendingClassrooms()->first();
 
         if ($pendingClassroom !== null) {
             return to_route('classrooms.join', $pendingClassroom->join_code);

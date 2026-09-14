@@ -30,6 +30,7 @@ import { store as joinStudentGroup } from '@/routes/student-classroom-group-memb
 type Props = {
     classroom: { name: string; join_code: string };
     student_team_creation_enabled: boolean;
+    selecting_team: boolean;
     claim: null | {
         name: string;
         sections: string;
@@ -56,6 +57,7 @@ export default function JoinClassroom({
     entries,
     available_groups,
     student_team_creation_enabled,
+    selecting_team,
 }: Props) {
     const { flash } = usePage().props;
     usePoll(
@@ -74,8 +76,9 @@ export default function JoinClassroom({
                         {classroom.name}
                     </h1>
                     <p className="text-muted-foreground">
-                        Select your Canvas roster entry once. Your GitHub
-                        account becomes linked to that team.
+                        {selecting_team
+                            ? 'Join an existing team or create a new one.'
+                            : 'Select your Canvas roster entry, or skip identity matching for now.'}
                     </p>
                 </div>
 
@@ -151,79 +154,82 @@ export default function JoinClassroom({
                     </Card>
                 ) : (
                     <>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Find your name</CardTitle>
-                                <CardDescription>
-                                    Claim cannot be changed without teacher
-                                    reset.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                                <div className="col-span-full">
-                                    <InputError
-                                        message={
-                                            usePage().props.errors.roster_entry
-                                        }
-                                    />
-                                </div>
-                                {entries.map((entry) => (
+                        {!selecting_team && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Find your name</CardTitle>
+                                    <CardDescription>
+                                        Claim cannot be changed without teacher
+                                        reset.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                    <div className="col-span-full">
+                                        <InputError
+                                            message={
+                                                usePage().props.errors
+                                                    .roster_entry
+                                            }
+                                        />
+                                    </div>
+                                    {entries.map((entry) => (
+                                        <Form
+                                            key={entry.id}
+                                            {...claimEntry.form({
+                                                classroom: classroom.join_code,
+                                                rosterEntry: entry.id,
+                                            })}
+                                            className="h-full"
+                                        >
+                                            {({ processing }) => (
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-full min-h-20 w-full justify-between p-4 text-left"
+                                                    disabled={processing}
+                                                >
+                                                    <span>
+                                                        <span className="block font-medium">
+                                                            {entry.name}
+                                                        </span>
+                                                        <span className="text-muted-foreground block text-xs">
+                                                            {entry.sections}
+                                                        </span>
+                                                    </span>
+                                                    <UserRoundCheck />
+                                                </Button>
+                                            )}
+                                        </Form>
+                                    ))}
+                                    {entries.length === 0 && (
+                                        <p className="text-muted-foreground col-span-full py-8 text-center text-sm">
+                                            No unclaimed roster entries remain.
+                                        </p>
+                                    )}
+                                </CardContent>
+                                <CardFooter className="flex-col items-stretch justify-between gap-4 border-t pt-6 sm:flex-row sm:items-center">
+                                    <p className="text-muted-foreground text-sm">
+                                        Can't find your name? Let your teacher
+                                        link your GitHub account.
+                                    </p>
                                     <Form
-                                        key={entry.id}
-                                        {...claimEntry.form({
-                                            classroom: classroom.join_code,
-                                            rosterEntry: entry.id,
-                                        })}
-                                        className="h-full"
+                                        {...skipRosterClaim.form(
+                                            classroom.join_code,
+                                        )}
                                     >
                                         {({ processing }) => (
                                             <Button
-                                                variant="outline"
-                                                className="h-full min-h-20 w-full justify-between p-4 text-left"
+                                                type="submit"
+                                                variant="ghost"
                                                 disabled={processing}
                                             >
-                                                <span>
-                                                    <span className="block font-medium">
-                                                        {entry.name}
-                                                    </span>
-                                                    <span className="text-muted-foreground block text-xs">
-                                                        {entry.sections}
-                                                    </span>
-                                                </span>
-                                                <UserRoundCheck />
+                                                Skip for now <SkipForward />
                                             </Button>
                                         )}
                                     </Form>
-                                ))}
-                                {entries.length === 0 && (
-                                    <p className="text-muted-foreground col-span-full py-8 text-center text-sm">
-                                        No unclaimed roster entries remain.
-                                    </p>
-                                )}
-                            </CardContent>
-                            <CardFooter className="flex-col items-stretch justify-between gap-4 border-t pt-6 sm:flex-row sm:items-center">
-                                <p className="text-muted-foreground text-sm">
-                                    Can't find your name? Let your teacher link
-                                    your GitHub account.
-                                </p>
-                                <Form
-                                    {...skipRosterClaim.form(
-                                        classroom.join_code,
-                                    )}
-                                >
-                                    {({ processing }) => (
-                                        <Button
-                                            type="submit"
-                                            variant="ghost"
-                                            disabled={processing}
-                                        >
-                                            Skip for now <SkipForward />
-                                        </Button>
-                                    )}
-                                </Form>
-                            </CardFooter>
-                        </Card>
-                        {available_groups.length > 0 && (
+                                </CardFooter>
+                            </Card>
+                        )}
+                        {selecting_team && available_groups.length > 0 && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Join an existing team</CardTitle>
@@ -277,7 +283,7 @@ export default function JoinClassroom({
                                 </CardContent>
                             </Card>
                         )}
-                        {student_team_creation_enabled && (
+                        {selecting_team && student_team_creation_enabled && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Create a new team</CardTitle>
@@ -319,6 +325,21 @@ export default function JoinClassroom({
                                 </CardContent>
                             </Card>
                         )}
+                        {selecting_team &&
+                            available_groups.length === 0 &&
+                            !student_team_creation_enabled && (
+                                <Card className="border-dashed">
+                                    <CardHeader>
+                                        <CardTitle>
+                                            No teams available
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Ask your teacher to create a team or
+                                            enable student team creation.
+                                        </CardDescription>
+                                    </CardHeader>
+                                </Card>
+                            )}
                     </>
                 )}
             </div>

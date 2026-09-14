@@ -17,12 +17,16 @@ class RosterClaimController extends Controller
     {
         $claim = $classroom->rosterEntries()
             ->where('claimed_by_user_id', $request->user()->id)
+            ->where('canvas_user_id', 'not like', 'github-user-%')
             ->with('group')
             ->first();
+        $selectingTeam = $claim === null
+            && $request->session()->get('onboarding.team_selection_classroom_id') === $classroom->id;
 
         return Inertia::render('join', [
             'classroom' => ['name' => $classroom->name, 'join_code' => $classroom->join_code],
             'student_team_creation_enabled' => $classroom->student_team_creation_enabled,
+            'selecting_team' => $selectingTeam,
             'claim' => $claim === null ? null : [
                 'name' => $claim->name,
                 'sections' => $claim->sections,
@@ -34,15 +38,14 @@ class RosterClaimController extends Controller
                     'pages_url' => $claim->group->github_pages_url,
                 ],
             ],
-            'entries' => $claim === null
+            'entries' => $claim === null && ! $selectingTeam
                 ? $classroom->rosterEntries()
                     ->whereNull('claimed_by_user_id')
                     ->orderBy('name')
                     ->get(['id', 'name', 'sections'])
                 : [],
-            'available_groups' => $claim === null
+            'available_groups' => $claim === null && $selectingTeam
                 ? $classroom->groups()
-                    ->where('created_manually', true)
                     ->withCount('rosterEntries')
                     ->orderBy('name')
                     ->get()
