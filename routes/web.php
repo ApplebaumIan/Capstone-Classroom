@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Auth\GitHubAuthenticationController;
 use App\Http\Controllers\Auth\LocalAuthenticationController;
+use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\ClassroomGroupController;
+use App\Http\Controllers\ClassroomStudentController;
+use App\Http\Controllers\ClassroomTeamController;
 use App\Http\Controllers\ClassroomTeamCreationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GitHubInstallationController;
@@ -29,20 +32,25 @@ Route::post('/auth/local/{role}', LocalAuthenticationController::class)
 
 Route::middleware('auth')->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('classrooms/create', [ClassroomController::class, 'create'])->name('classrooms.create');
+    Route::post('classrooms', [ClassroomController::class, 'store'])->name('classrooms.store');
+    Route::get('classrooms/{classroom}/setup', [ClassroomController::class, 'edit'])->name('classrooms.edit');
+    Route::put('classrooms/{classroom}', [ClassroomController::class, 'update'])->name('classrooms.update');
+    Route::get('classrooms/{classroom}/students', ClassroomStudentController::class)->name('classrooms.students');
+    Route::get('classrooms/{classroom}/teams', ClassroomTeamController::class)->name('classrooms.teams');
     Route::get('github/install', [GitHubInstallationController::class, 'create'])->name('github.installations.create');
-    Route::post('github/install', [GitHubInstallationController::class, 'store'])->name('github.installations.store');
-    Route::post('roster', [RosterController::class, 'store'])->name('roster.store');
-    Route::post('roster/import-skip', RosterImportSkipController::class)->name('roster-import-skips.store');
-    Route::post('groups', [ClassroomGroupController::class, 'store'])->name('classroom-groups.store');
-    Route::patch('classroom/team-creation', [ClassroomTeamCreationController::class, 'update'])->name('classroom-team-creation.update');
+    Route::post('classrooms/{classroom}/roster', [RosterController::class, 'store'])->name('roster.store');
+    Route::post('classrooms/{classroom}/roster/import-skip', RosterImportSkipController::class)->name('roster-import-skips.store');
+    Route::post('classrooms/{classroom}/groups', [ClassroomGroupController::class, 'store'])->name('classroom-groups.store');
+    Route::patch('classrooms/{classroom}/team-creation', [ClassroomTeamCreationController::class, 'update'])->name('classroom-team-creation.update');
     Route::get('join/{classroom:join_code}', [RosterClaimController::class, 'show'])->name('classrooms.join');
     Route::post('join/{classroom:join_code}/groups', [StudentClassroomGroupController::class, 'store'])->name('student-classroom-groups.store');
     Route::post('join/{classroom:join_code}/groups/{classroomGroup}/membership', StudentClassroomGroupMembershipController::class)->name('student-classroom-group-memberships.store');
     Route::post('join/{classroom:join_code}/skip', [PendingClassroomStudentController::class, 'store'])->name('pending-classroom-students.store');
     Route::post('join/{classroom:join_code}/entries/{rosterEntry}', [RosterClaimController::class, 'store'])->name('roster-claims.store');
-    Route::post('pending-students/{pendingStudent}/roster-claim', PendingRosterClaimController::class)->name('pending-roster-claims.store');
-    Route::delete('roster-claims/{rosterEntry}', RosterClaimResetController::class)->name('roster-claims.destroy');
-    Route::post('groups/{classroomGroup}/provisioning', GroupProvisioningController::class)->name('group-provisioning.store');
+    Route::post('classrooms/{classroom}/pending-students/{pendingStudent}/roster-claim', PendingRosterClaimController::class)->name('pending-roster-claims.store');
+    Route::delete('classrooms/{classroom}/roster-claims/{rosterEntry}', RosterClaimResetController::class)->name('roster-claims.destroy');
+    Route::post('classrooms/{classroom}/groups/{classroomGroup}/provisioning', GroupProvisioningController::class)->name('group-provisioning.store');
 });
 
 Route::get('/auth/github', [GitHubAuthenticationController::class, 'redirect'])

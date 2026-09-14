@@ -15,18 +15,34 @@ class RosterClaimController extends Controller
 {
     public function show(Request $request, Classroom $classroom): Response
     {
+        $isTestingTeacher = $classroom->teacher_id === $request->user()->id;
         $claim = $classroom->rosterEntries()
             ->where('claimed_by_user_id', $request->user()->id)
             ->where('canvas_user_id', 'not like', 'github-user-%')
             ->with('group')
             ->first();
-        $selectingTeam = $claim === null
+        $testingMembership = $isTestingTeacher
+            ? $classroom->rosterEntries()
+                ->where('claimed_by_user_id', $request->user()->id)
+                ->where('canvas_user_id', 'like', 'github-user-%')
+                ->with('group')
+                ->first()
+            : null;
+        $selectingTeam = ! $isTestingTeacher && $claim === null
             && $request->session()->get('onboarding.team_selection_classroom_id') === $classroom->id;
 
         return Inertia::render('join', [
             'classroom' => ['name' => $classroom->name, 'join_code' => $classroom->join_code],
             'student_team_creation_enabled' => $classroom->student_team_creation_enabled,
+            'teacher_testing' => $isTestingTeacher,
             'selecting_team' => $selectingTeam,
+            'testing_group' => $testingMembership === null ? null : [
+                'name' => $testingMembership->group->name,
+                'status' => $testingMembership->group->status->value,
+                'error' => $testingMembership->group->provisioning_error,
+                'repository_url' => $testingMembership->group->github_repository_url,
+                'pages_url' => $testingMembership->group->github_pages_url,
+            ],
             'claim' => $claim === null ? null : [
                 'name' => $claim->name,
                 'sections' => $claim->sections,
@@ -38,7 +54,7 @@ class RosterClaimController extends Controller
                     'pages_url' => $claim->group->github_pages_url,
                 ],
             ],
-            'entries' => $claim === null && ! $selectingTeam
+            'entries' => ! $isTestingTeacher && $claim === null && ! $selectingTeam
                 ? $classroom->rosterEntries()
                     ->whereNull('claimed_by_user_id')
                     ->orderBy('name')
@@ -65,6 +81,8 @@ class RosterClaimController extends Controller
         RosterEntry $rosterEntry,
         ClaimRosterEntry $claimRosterEntry,
     ): RedirectResponse {
+        abort_if($classroom->teacher_id === $request->user()->id, 403);
+
         if ($rosterEntry->classroom_id !== $classroom->id) {
             abort(404);
         }

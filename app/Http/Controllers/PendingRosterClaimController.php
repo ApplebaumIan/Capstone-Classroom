@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\ClaimRosterEntry;
+use App\Models\Classroom;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,11 +12,11 @@ class PendingRosterClaimController extends Controller
 {
     public function __invoke(
         Request $request,
+        Classroom $classroom,
         User $pendingStudent,
         ClaimRosterEntry $claimRosterEntry,
     ): RedirectResponse {
-        $classroom = $request->user()->classroom()->firstOrFail();
-        $request->user()->can('update', $classroom) || abort(404);
+        abort_unless($classroom->teacher_id === $request->user()->id, 404);
         $classroom->pendingStudents()->whereKey($pendingStudent->id)->exists() || abort(404);
 
         $validated = $request->validate([
@@ -32,6 +33,6 @@ class PendingRosterClaimController extends Controller
             ? $pendingStudent->name
             : "@{$pendingStudent->github_login}";
 
-        return to_route('dashboard')->with('success', "{$studentName} was linked to {$rosterEntry->name}.");
+        return to_route('classrooms.students', $classroom)->with('success', "{$studentName} was linked to {$rosterEntry->name}.");
     }
 }

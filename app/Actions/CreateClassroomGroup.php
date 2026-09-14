@@ -51,7 +51,9 @@ class CreateClassroomGroup
                     'canvas_login_id' => $student->github_login ?? $student->email,
                     'canvas_id' => "github-user-{$student->id}",
                     'name' => $student->name,
-                    'sections' => 'Student-created team',
+                    'sections' => $student->id === $classroom->teacher_id
+                        ? 'Teacher testing team'
+                        : 'Student-created team',
                     'claimed_at' => now(),
                 ]);
 

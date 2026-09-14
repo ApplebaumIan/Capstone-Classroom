@@ -7,6 +7,7 @@ import {
     SkipForward,
     UserRoundCheck,
 } from 'lucide-react';
+import { useEffect } from 'react';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { join } from '@/routes/classrooms';
 import { store as skipRosterClaim } from '@/routes/pending-classroom-students';
 import { store as claimEntry } from '@/routes/roster-claims';
 import { store as createStudentGroup } from '@/routes/student-classroom-groups';
@@ -30,7 +30,15 @@ import { store as joinStudentGroup } from '@/routes/student-classroom-group-memb
 type Props = {
     classroom: { name: string; join_code: string };
     student_team_creation_enabled: boolean;
+    teacher_testing: boolean;
     selecting_team: boolean;
+    testing_group: null | {
+        name: string;
+        status: 'waiting' | 'provisioning' | 'ready' | 'failed';
+        error: string | null;
+        repository_url: string | null;
+        pages_url: string | null;
+    };
     claim: null | {
         name: string;
         sections: string;
@@ -57,28 +65,45 @@ export default function JoinClassroom({
     entries,
     available_groups,
     student_team_creation_enabled,
+    teacher_testing,
+    testing_group,
     selecting_team,
 }: Props) {
     const { flash } = usePage().props;
-    usePoll(
+    const shouldPoll =
+        claim?.group.status === 'provisioning' ||
+        testing_group?.status === 'provisioning';
+    const { stop } = usePoll(
         10_000,
-        { only: ['claim'] },
-        { autoStart: claim?.group.status === 'provisioning' },
+        { only: ['claim', 'testing_group'] },
+        { autoStart: shouldPoll },
     );
+
+    useEffect(() => {
+        if (!shouldPoll) {
+            stop();
+        }
+    }, [shouldPoll, stop]);
 
     return (
         <>
             <Head title={`Join ${classroom.name}`} />
             <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-4 md:p-8">
                 <div className="space-y-2">
-                    <Badge variant="outline">Student onboarding</Badge>
+                    <Badge variant="outline">
+                        {teacher_testing
+                            ? 'Teacher testing mode'
+                            : 'Student onboarding'}
+                    </Badge>
                     <h1 className="text-3xl font-semibold tracking-tight">
                         {classroom.name}
                     </h1>
                     <p className="text-muted-foreground">
-                        {selecting_team
-                            ? 'Join an existing team or create a new one.'
-                            : 'Select your Canvas roster entry, or skip identity matching for now.'}
+                        {teacher_testing
+                            ? 'Test student team creation and GitHub provisioning.'
+                            : selecting_team
+                              ? 'Join an existing team or create a new one.'
+                              : 'Select your Canvas roster entry, or skip identity matching for now.'}
                     </p>
                 </div>
 
@@ -90,7 +115,125 @@ export default function JoinClassroom({
                     </Alert>
                 )}
 
-                {claim ? (
+                {teacher_testing ? (
+                    testing_group ? (
+                        <Card>
+                            <CardHeader>
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                        <CardTitle>
+                                            {testing_group.name}
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Teacher testing team
+                                        </CardDescription>
+                                    </div>
+                                    <Badge
+                                        variant={
+                                            testing_group.status === 'failed'
+                                                ? 'destructive'
+                                                : testing_group.status ===
+                                                    'ready'
+                                                  ? 'default'
+                                                  : 'secondary'
+                                        }
+                                    >
+                                        {testing_group.status ===
+                                            'provisioning' && (
+                                            <RefreshCw className="animate-spin" />
+                                        )}
+                                        {testing_group.status}
+                                    </Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex flex-wrap gap-3">
+                                {testing_group.repository_url && (
+                                    <a
+                                        className={buttonVariants()}
+                                        href={testing_group.repository_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <Github /> Repository <ExternalLink />
+                                    </a>
+                                )}
+                                {testing_group.pages_url && (
+                                    <a
+                                        className={buttonVariants({
+                                            variant: 'outline',
+                                        })}
+                                        href={testing_group.pages_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        Project site <ExternalLink />
+                                    </a>
+                                )}
+                                {testing_group.status === 'provisioning' && (
+                                    <p className="text-muted-foreground w-full text-sm">
+                                        Testing team is being provisioned.
+                                    </p>
+                                )}
+                                {testing_group.error && (
+                                    <p className="text-destructive w-full text-sm">
+                                        {testing_group.error}
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ) : student_team_creation_enabled ? (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Create testing team</CardTitle>
+                                <CardDescription>
+                                    Uses same GitHub provisioning path as a
+                                    student-created team. Your account stays in
+                                    teacher mode.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Form
+                                    {...createStudentGroup.form(
+                                        classroom.join_code,
+                                    )}
+                                    className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+                                >
+                                    {({ errors, processing }) => (
+                                        <>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="testing-team-name">
+                                                    Team name
+                                                </Label>
+                                                <Input
+                                                    id="testing-team-name"
+                                                    name="name"
+                                                    placeholder="Teacher Test Team"
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.name}
+                                                />
+                                            </div>
+                                            <Button disabled={processing}>
+                                                Create testing team
+                                            </Button>
+                                        </>
+                                    )}
+                                </Form>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card className="border-dashed">
+                            <CardHeader>
+                                <CardTitle>Testing disabled</CardTitle>
+                                <CardDescription>
+                                    Enable student team creation from Teams to
+                                    test this flow.
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                    )
+                ) : claim ? (
                     <Card>
                         <CardHeader>
                             <div className="flex flex-wrap items-start justify-between gap-3">

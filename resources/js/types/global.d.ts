@@ -11,6 +11,14 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            teacherNavigation: {
+                classrooms: Array<{
+                    id: number;
+                    name: string;
+                    organization: string | null;
+                }>;
+                can_create_classroom: boolean;
+            };
             flash: { success?: string };
             sidebarOpen: boolean;
             [key: string]: unknown;

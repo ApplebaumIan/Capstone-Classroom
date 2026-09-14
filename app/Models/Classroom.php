@@ -25,6 +25,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $roster_imported_at
  * @property Carbon|null $roster_skipped_at
  * @property bool $student_team_creation_enabled
+ * @property-read int|null $student_count
+ * @property-read int|null $claimed_students_count
+ * @property-read int|null $groups_count
  * @property-read User $teacher
  * @property-read Collection<int, ClassroomGroup> $groups
  * @property-read Collection<int, RosterEntry> $rosterEntries

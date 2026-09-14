@@ -41,6 +41,28 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'teacherNavigation' => function () use ($request): array {
+                $user = $request->user();
+
+                if ($user === null) {
+                    return ['classrooms' => [], 'can_create_classroom' => false];
+                }
+
+                $classrooms = $user->classrooms()
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'github_organization_login']);
+                $isStudentOnly = $classrooms->isEmpty()
+                    && ($user->rosterClaims()->exists() || $user->pendingClassrooms()->exists());
+
+                return [
+                    'classrooms' => $classrooms->map(fn ($classroom): array => [
+                        'id' => $classroom->id,
+                        'name' => $classroom->name,
+                        'organization' => $classroom->github_organization_login,
+                    ]),
+                    'can_create_classroom' => ! $isStudentOnly,
+                ];
+            },
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
             ],

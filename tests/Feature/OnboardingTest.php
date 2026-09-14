@@ -25,7 +25,7 @@ Jane Doe,265893,tul26955,tul26955,Section: 002,Section 002: Vulnhunter,404005,
 CSV;
 }
 
-test('dashboard creates one classroom for a teacher', function () {
+test('dashboard shows empty classroom overview for a new teacher', function () {
     $teacher = User::factory()->create();
 
     $response = $this->actingAs($teacher)->get(route('dashboard'));
@@ -33,20 +33,20 @@ test('dashboard creates one classroom for a teacher', function () {
     $response->assertOk()->assertInertia(fn (Assert $page) => $page
         ->component('dashboard')
         ->where('mode', 'teacher')
-        ->where('classroom.installed', false));
-    expect($teacher->fresh()->classroom)->not->toBeNull();
+        ->where('classrooms', []));
+    expect($teacher->fresh()->classrooms)->toBeEmpty();
 });
 
 test('teacher imports quoted Canvas roster into groups', function () {
     $classroom = Classroom::factory()->installed()->create(['roster_skipped_at' => now()]);
     $roster = UploadedFile::fake()->createWithContent('roster.csv', rosterCsv());
 
-    $response = $this->actingAs($classroom->teacher)->post(route('roster.store'), [
+    $response = $this->actingAs($classroom->teacher)->post(route('roster.store', $classroom), [
         'roster' => $roster,
         'repository_visibility' => 'private',
     ]);
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('classrooms.students', $classroom));
     $this->assertDatabaseHas('roster_entries', [
         'classroom_id' => $classroom->id,
         'name' => 'Tan, Timmy',
@@ -61,12 +61,12 @@ test('teacher imports quoted Canvas roster into groups', function () {
 test('teacher can skip roster import and return to it later', function () {
     $classroom = Classroom::factory()->installed()->create();
 
-    $response = $this->actingAs($classroom->teacher)->post(route('roster-import-skips.store'));
+    $response = $this->actingAs($classroom->teacher)->post(route('roster-import-skips.store', $classroom));
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('classrooms.students', $classroom));
     expect($classroom->fresh()->roster_skipped_at)->not->toBeNull()
         ->and($classroom->fresh()->roster_imported_at)->toBeNull();
-    $this->get(route('dashboard'))
+    $this->get(route('classrooms.students', $classroom))
         ->assertInertia(fn (Assert $page) => $page
             ->where('classroom.roster_skipped', true)
             ->where('classroom.roster_imported', false));
@@ -75,7 +75,7 @@ test('teacher can skip roster import and return to it later', function () {
 test('teacher cannot skip roster import before installing github', function () {
     $classroom = Classroom::factory()->create();
 
-    $response = $this->actingAs($classroom->teacher)->post(route('roster-import-skips.store'));
+    $response = $this->actingAs($classroom->teacher)->post(route('roster-import-skips.store', $classroom));
 
     $response->assertConflict();
     expect($classroom->fresh()->roster_skipped_at)->toBeNull();
@@ -85,11 +85,11 @@ test('teacher can create a team without a roster', function () {
     Queue::fake([ProvisionClassroomGroup::class]);
     $classroom = Classroom::factory()->installed()->create();
 
-    $response = $this->actingAs($classroom->teacher)->post(route('classroom-groups.store'), [
+    $response = $this->actingAs($classroom->teacher)->post(route('classroom-groups.store', $classroom), [
         'name' => 'Project Atlas',
     ]);
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('classrooms.teams', $classroom));
     $group = $classroom->groups()->firstOrFail();
     expect($group->name)->toBe('Project Atlas')
         ->and($group->repository_name)->toBe('project-atlas')
@@ -181,11 +181,11 @@ test('student cannot join a team from another classroom', function () {
 test('teacher can disable student team creation', function () {
     $classroom = Classroom::factory()->installed()->create();
 
-    $response = $this->actingAs($classroom->teacher)->patch(route('classroom-team-creation.update'), [
+    $response = $this->actingAs($classroom->teacher)->patch(route('classroom-team-creation.update', $classroom), [
         'enabled' => false,
     ]);
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('classrooms.teams', $classroom));
     expect($classroom->fresh()->student_team_creation_enabled)->toBeFalse();
 });
 
@@ -214,10 +214,10 @@ test('later roster import preserves manually created teams', function () {
     ]);
     $roster = UploadedFile::fake()->createWithContent('roster.csv', rosterCsv());
 
-    $this->actingAs($classroom->teacher)->post(route('roster.store'), [
+    $this->actingAs($classroom->teacher)->post(route('roster.store', $classroom), [
         'roster' => $roster,
         'repository_visibility' => 'private',
-    ])->assertRedirect(route('dashboard'));
+    ])->assertRedirect(route('classrooms.students', $classroom));
 
     expect($manualGroup->fresh())->not->toBeNull()
         ->and($classroom->groups()->where('created_manually', false)->count())->toBe(1)
@@ -228,7 +228,7 @@ test('roster import rejects unexpected headers', function () {
     $classroom = Classroom::factory()->installed()->create();
     $roster = UploadedFile::fake()->createWithContent('roster.csv', "name,group\nTimmy,Vulnhunter");
 
-    $response = $this->actingAs($classroom->teacher)->post(route('roster.store'), [
+    $response = $this->actingAs($classroom->teacher)->post(route('roster.store', $classroom), [
         'roster' => $roster,
         'repository_visibility' => 'private',
     ]);
@@ -276,7 +276,7 @@ test('pending student is prompted to select a roster entry on dashboard visits',
     $response = $this->actingAs($student)->get(route('dashboard'));
 
     $response->assertRedirect(route('classrooms.join', $classroom->join_code));
-    expect($student->fresh()->classroom)->toBeNull();
+    expect($student->fresh()->classrooms)->toBeEmpty();
 });
 
 test('teacher sees pending github students and available roster entries', function () {
@@ -286,9 +286,10 @@ test('teacher sees pending github students and available roster entries', functi
     $student = User::factory()->create(['github_login' => 'octocat']);
     $classroom->pendingStudents()->attach($student);
 
-    $response = $this->actingAs($classroom->teacher)->get(route('dashboard'));
+    $response = $this->actingAs($classroom->teacher)->get(route('classrooms.students', $classroom));
 
     $response->assertInertia(fn (Assert $page) => $page
+        ->component('classrooms/students')
         ->where('classroom.pending_students.0.github_login', 'octocat')
         ->where('classroom.unclaimed_entries.0.id', $entry->id)
         ->where('classroom.unclaimed_entries.0.group', $group->name));
@@ -302,11 +303,11 @@ test('teacher can link a pending github student to a roster entry', function () 
     $student = User::factory()->create();
     $classroom->pendingStudents()->attach($student);
 
-    $response = $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', $student), [
+    $response = $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', [$classroom, $student]), [
         'roster_entry_id' => $entry->id,
     ]);
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('classrooms.students', $classroom));
     expect($entry->fresh()->claimed_by_user_id)->toBe($student->id)
         ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
     Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
@@ -329,9 +330,9 @@ test('canvas roster team replaces the temporary team selected by a skipped stude
     $canvasEntry = RosterEntry::factory()->for($classroom)->for($canvasGroup, 'group')->create();
     $classroom->pendingStudents()->attach($student);
 
-    $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', $student), [
+    $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', [$classroom, $student]), [
         'roster_entry_id' => $canvasEntry->id,
-    ])->assertRedirect(route('dashboard'));
+    ])->assertRedirect(route('classrooms.students', $classroom));
 
     $this->assertModelMissing($temporaryEntry);
     expect($canvasEntry->fresh()->claimed_by_user_id)->toBe($student->id)
@@ -348,7 +349,7 @@ test('teacher cannot link a github student pending in another classroom', functi
     $student = User::factory()->create();
     $otherClassroom->pendingStudents()->attach($student);
 
-    $response = $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', $student), [
+    $response = $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', [$classroom, $student]), [
         'roster_entry_id' => $entry->id,
     ]);
 
@@ -397,9 +398,9 @@ test('teacher resets a claim and queues GitHub team removal', function () {
         'claimed_at' => now(),
     ]);
 
-    $response = $this->actingAs($classroom->teacher)->delete(route('roster-claims.destroy', $entry));
+    $response = $this->actingAs($classroom->teacher)->delete(route('roster-claims.destroy', [$classroom, $entry]));
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('classrooms.students', $classroom));
     expect($entry->fresh()->claimed_by_user_id)->toBeNull();
     expect($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeTrue();
     Queue::assertPushed(RemoveStudentFromGitHubTeam::class, fn ($job) => $job->githubLogin === 'octocat');
@@ -411,9 +412,176 @@ test('another teacher cannot reset a roster claim', function () {
     $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create();
     $otherTeacher = User::factory()->create();
 
-    $response = $this->actingAs($otherTeacher)->delete(route('roster-claims.destroy', $entry));
+    $response = $this->actingAs($otherTeacher)->delete(route('roster-claims.destroy', [$classroom, $entry]));
 
     $response->assertNotFound();
+});
+
+test('teacher dashboard lists multiple classrooms and sidebar navigation', function () {
+    $teacher = User::factory()->create();
+    $firstClassroom = Classroom::factory()->installed()->for($teacher, 'teacher')->create(['name' => 'Classroom A']);
+    $secondClassroom = Classroom::factory()->installed()->for($teacher, 'teacher')->create(['name' => 'Classroom B']);
+
+    $this->actingAs($teacher)->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('mode', 'teacher')
+            ->has('classrooms', 2)
+            ->where('classrooms.0.name', 'Classroom A')
+            ->where('classrooms.1.name', 'Classroom B')
+            ->where('teacherNavigation.classrooms.0.id', $firstClassroom->id)
+            ->where('teacherNavigation.classrooms.1.id', $secondClassroom->id)
+            ->where('teacherNavigation.can_create_classroom', true));
+});
+
+test('teacher classroom pages are private to their owner', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $otherTeacher = User::factory()->create();
+
+    $this->actingAs($otherTeacher)
+        ->get(route('classrooms.students', $classroom))
+        ->assertNotFound();
+    $this->get(route('classrooms.teams', $classroom))->assertNotFound();
+    $this->post(route('classroom-groups.store', $classroom), [
+        'name' => 'Unauthorized Team',
+    ])->assertNotFound();
+    $this->patch(route('classroom-team-creation.update', $classroom), [
+        'enabled' => false,
+    ])->assertNotFound();
+    $this->post(route('roster.store', $classroom))->assertNotFound();
+    $this->post(route('group-provisioning.store', [$classroom, $group]))->assertNotFound();
+    $this->put(route('classrooms.update', $classroom), [])->assertNotFound();
+});
+
+test('classroom owner sees teacher testing mode instead of canvas identities', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    RosterEntry::factory()->for($classroom)->for($group, 'group')->create();
+
+    $this->actingAs($classroom->teacher)
+        ->get(route('classrooms.join', $classroom->join_code))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('teacher_testing', true)
+            ->where('testing_group', null)
+            ->where('entries', []));
+});
+
+test('classroom owner creates a testing team without becoming an unlinked student', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $teacher = $classroom->teacher;
+
+    $this->actingAs($teacher)->post(route('student-classroom-groups.store', $classroom->join_code), [
+        'name' => 'Teacher Test Team',
+    ])->assertRedirect(route('classrooms.join', $classroom->join_code));
+
+    $group = $classroom->groups()->firstOrFail();
+    $entry = $group->rosterEntries()->firstOrFail();
+    expect($entry->claimed_by_user_id)->toBe($teacher->id)
+        ->and($entry->sections)->toBe('Teacher testing team')
+        ->and($classroom->pendingStudents()->whereKey($teacher->id)->exists())->toBeFalse();
+    Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
+
+    $this->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page->where('mode', 'teacher'));
+    $this->get(route('classrooms.students', $classroom))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('classroom.students', [])
+            ->where('classroom.pending_students', []));
+    $this->get(route('classrooms.teams', $classroom))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('classroom.groups.0.is_testing', true)
+            ->where('classroom.groups.0.students.0.id', $entry->id));
+    $this->delete(route('roster-claims.destroy', [$classroom, $entry]))->assertNotFound();
+
+    $roster = UploadedFile::fake()->createWithContent('roster.csv', rosterCsv());
+    $this->post(route('roster.store', $classroom), [
+        'roster' => $roster,
+        'repository_visibility' => 'private',
+    ])->assertRedirect(route('classrooms.students', $classroom));
+    expect($group->fresh())->not->toBeNull()
+        ->and($classroom->rosterEntries()->where('canvas_user_id', 'not like', 'github-user-%')->count())->toBe(2);
+});
+
+test('classroom owner cannot create a testing team when student creation is disabled', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create([
+        'student_team_creation_enabled' => false,
+    ]);
+
+    $this->actingAs($classroom->teacher)
+        ->post(route('student-classroom-groups.store', $classroom->join_code), [
+            'name' => 'Blocked Test Team',
+        ])
+        ->assertForbidden();
+
+    expect($classroom->groups()->exists())->toBeFalse();
+    Queue::assertNothingPushed();
+});
+
+test('classroom owner cannot claim a canvas student identity', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create();
+
+    $this->actingAs($classroom->teacher)
+        ->post(route('roster-claims.store', [$classroom->join_code, $entry]))
+        ->assertForbidden();
+
+    expect($entry->fresh()->claimed_by_user_id)->toBeNull();
+    Queue::assertNothingPushed();
+});
+
+test('teacher can join another classroom without losing teacher dashboard', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $teacher = User::factory()->create();
+    Classroom::factory()->installed()->for($teacher, 'teacher')->create();
+    $studentClassroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($studentClassroom)->create();
+    $entry = RosterEntry::factory()->for($studentClassroom)->for($group, 'group')->create();
+
+    $this->actingAs($teacher)
+        ->post(route('roster-claims.store', [$studentClassroom->join_code, $entry]))
+        ->assertRedirect(route('classrooms.join', $studentClassroom->join_code));
+
+    $this->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page->where('mode', 'teacher'));
+    $this->get(route('classrooms.join', $studentClassroom->join_code))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('teacher_testing', false)
+            ->where('claim.name', $entry->name));
+});
+
+test('github organization can belong to only one classroom', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.github.com/user/installations*' => Http::response([
+            'installations' => [[
+                'id' => 999,
+                'target_type' => 'Organization',
+                'account' => ['id' => 456, 'login' => 'temple'],
+            ]],
+        ]),
+    ]);
+    Classroom::factory()->create([
+        'github_installation_id' => '123',
+        'github_organization_id' => '456',
+        'github_organization_login' => 'temple',
+    ]);
+    $teacher = User::factory()->create();
+
+    $this->actingAs($teacher)
+        ->withSession(['github.user_access_token' => Crypt::encryptString('user-token')])
+        ->post(route('classrooms.store'), [
+            'name' => 'Duplicate Classroom',
+            'installation_id' => '999',
+        ])
+        ->assertSessionHasErrors([
+            'installation_id' => 'That GitHub organization already has a classroom.',
+        ]);
+
+    expect($teacher->classrooms()->exists())->toBeFalse();
 });
 
 test('teacher connects only a GitHub installation available to their account', function () {
@@ -427,14 +595,19 @@ test('teacher connects only a GitHub installation available to their account', f
             ]],
         ]),
     ]);
-    $classroom = Classroom::factory()->create();
+    $teacher = User::factory()->create();
 
-    $response = $this->actingAs($classroom->teacher)
+    $response = $this->actingAs($teacher)
         ->withSession(['github.user_access_token' => Crypt::encryptString('user-token')])
-        ->post(route('github.installations.store'), ['installation_id' => '123']);
+        ->post(route('classrooms.store'), [
+            'name' => 'Classroom A',
+            'installation_id' => '123',
+        ]);
 
-    $response->assertRedirect(route('dashboard'));
+    $classroom = $teacher->classrooms()->firstOrFail();
+    $response->assertRedirect(route('classrooms.students', $classroom));
     expect($classroom->fresh())
+        ->name->toBe('Classroom A')
         ->github_installation_id->toBe('123')
         ->github_organization_login->toBe('temple');
 });
@@ -444,14 +617,17 @@ test('teacher cannot connect a spoofed GitHub installation', function () {
     Http::fake([
         'api.github.com/user/installations*' => Http::response(['installations' => []]),
     ]);
-    $classroom = Classroom::factory()->create();
+    $teacher = User::factory()->create();
 
-    $response = $this->actingAs($classroom->teacher)
+    $response = $this->actingAs($teacher)
         ->withSession(['github.user_access_token' => Crypt::encryptString('user-token')])
-        ->post(route('github.installations.store'), ['installation_id' => '999']);
+        ->post(route('classrooms.store'), [
+            'name' => 'Classroom A',
+            'installation_id' => '999',
+        ]);
 
     $response->assertSessionHasErrors([
         'installation_id' => 'That GitHub App installation is not available to your account.',
     ]);
-    expect($classroom->fresh()->github_installation_id)->toBeNull();
+    expect($teacher->classrooms()->exists())->toBeFalse();
 });

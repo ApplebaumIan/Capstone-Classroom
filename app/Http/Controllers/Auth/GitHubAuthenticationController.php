@@ -35,10 +35,14 @@ class GitHubAuthenticationController extends Controller
         $installationPending = $request->session()->get('github.installation_pending') === true;
 
         if ($request->filled('error')) {
-            $request->session()->forget('github.installation_pending');
+            $returnUrl = $this->installationReturnUrl($request);
+            $request->session()->forget([
+                'github.installation_pending',
+                'github.installation_classroom_id',
+            ]);
 
             return Auth::check()
-                ? to_route('dashboard')->withErrors(['github' => 'GitHub authorization was cancelled.'])
+                ? redirect()->to($returnUrl)->withErrors(['github' => 'GitHub authorization was cancelled.'])
                 : to_route('login')->withErrors(['github' => 'GitHub authorization was cancelled.']);
         }
 
@@ -89,13 +93,23 @@ class GitHubAuthenticationController extends Controller
             $request->session()->put('github.user_access_token', Crypt::encryptString($githubUser->token));
             $request->session()->put('github.available_installations', collect($installations)->map(fn (array $installation): array => [
                 'id' => (string) $installation['id'],
+                'account_id' => (string) $installation['account']['id'],
                 'login' => $installation['account']['login'],
                 'avatar_url' => $installation['account']['avatar_url'] ?? null,
             ])->values()->all());
 
-            return to_route('dashboard');
+            return redirect()->to($this->installationReturnUrl($request));
         }
 
         return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    private function installationReturnUrl(Request $request): string
+    {
+        $classroomId = $request->session()->get('github.installation_classroom_id');
+
+        return is_int($classroomId)
+            ? route('classrooms.edit', $classroomId, absolute: false)
+            : route('classrooms.create', absolute: false);
     }
 }

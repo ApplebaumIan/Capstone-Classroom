@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -27,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read Classroom|null $classroom
+ * @property-read Collection<int, Classroom> $classrooms
  * @property-read Collection<int, Classroom> $pendingClassrooms
  */
 #[Fillable(['github_id', 'github_login', 'avatar_url', 'name', 'email', 'password'])]
@@ -37,10 +36,10 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    /** @return HasOne<Classroom, $this> */
-    public function classroom(): HasOne
+    /** @return HasMany<Classroom, $this> */
+    public function classrooms(): HasMany
     {
-        return $this->hasOne(Classroom::class, 'teacher_id');
+        return $this->hasMany(Classroom::class, 'teacher_id');
     }
 
     /** @return HasMany<RosterEntry, $this> */

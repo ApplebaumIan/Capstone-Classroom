@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classroom;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class RosterImportSkipController extends Controller
 {
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(Request $request, Classroom $classroom): RedirectResponse
     {
-        $classroom = $request->user()->classroom()->firstOrFail();
+        abort_unless($classroom->teacher_id === $request->user()->id, 404);
 
         abort_if($classroom->github_installation_id === null, 409, 'Install the GitHub App before skipping roster import.');
 
@@ -17,6 +18,6 @@ class RosterImportSkipController extends Controller
             $classroom->update(['roster_skipped_at' => now()]);
         }
 
-        return to_route('dashboard')->with('success', 'Roster import skipped. You can import it whenever you are ready.');
+        return to_route('classrooms.students', $classroom)->with('success', 'Roster import skipped. You can import it whenever you are ready.');
     }
 }

@@ -17,12 +17,18 @@ class StoreRosterRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        $classroom = $user->classroom;
+        $classroom = $this->route('classroom');
 
-        return $classroom instanceof Classroom
-            && $user->can('update', $classroom)
-            && $classroom->github_installation_id !== null
-            && ! $classroom->rosterEntries()->whereNotNull('claimed_by_user_id')->exists();
+        abort_unless(
+            $classroom instanceof Classroom && $classroom->teacher_id === $user->id,
+            404,
+        );
+
+        return $classroom->github_installation_id !== null
+            && ! $classroom->rosterEntries()
+                ->whereNotNull('claimed_by_user_id')
+                ->where('canvas_user_id', 'not like', 'github-user-%')
+                ->exists();
     }
 
     /**
