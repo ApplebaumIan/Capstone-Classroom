@@ -13,7 +13,7 @@ class DocusaurusBuild extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Building Docusaurus docs...');
         $exitCode = 0;
