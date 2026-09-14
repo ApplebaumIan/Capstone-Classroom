@@ -56,6 +56,8 @@ class DashboardController extends Controller
                 'organization' => $classroom->github_organization_login,
                 'installed' => $classroom->github_installation_id !== null,
                 'roster_imported' => $classroom->roster_imported_at !== null,
+                'roster_skipped' => $classroom->roster_skipped_at !== null,
+                'student_team_creation_enabled' => $classroom->student_team_creation_enabled,
                 'repository_visibility' => $classroom->repository_visibility->value,
                 'student_count' => $classroom->rosterEntries()->count(),
                 'claimed_count' => $classroom->rosterEntries()->whereNotNull('claimed_by_user_id')->count(),

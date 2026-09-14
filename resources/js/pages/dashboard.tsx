@@ -4,7 +4,9 @@ import {
     Clipboard,
     ExternalLink,
     Github,
+    Plus,
     RefreshCw,
+    Settings2,
     Upload,
     Users,
 } from 'lucide-react';
@@ -17,6 +19,7 @@ import {
     Card,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
@@ -24,6 +27,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { update as updateTeamCreation } from '@/routes/classroom-team-creation';
+import { store as createClassroomGroup } from '@/routes/classroom-groups';
 import {
     create as installGitHub,
     store as storeInstallation,
@@ -32,6 +37,7 @@ import { store as retryProvisioning } from '@/routes/group-provisioning';
 import { store as assignRosterClaim } from '@/routes/pending-roster-claims';
 import { destroy as resetClaim } from '@/routes/roster-claims';
 import { store as storeRoster } from '@/routes/roster';
+import { store as skipRosterImport } from '@/routes/roster-import-skips';
 
 type Group = {
     id: number;
@@ -58,6 +64,8 @@ type Props = {
         organization: string | null;
         installed: boolean;
         roster_imported: boolean;
+        roster_skipped: boolean;
+        student_team_creation_enabled: boolean;
         repository_visibility: 'public' | 'private';
         student_count: number;
         claimed_count: number;
@@ -314,86 +322,204 @@ export default function Dashboard({
                 )}
 
                 {classroom.installed && !classroom.roster_imported && (
+                    <div
+                        className={cn(
+                            'grid gap-4',
+                            classroom.roster_skipped &&
+                                'lg:grid-cols-[0.7fr_1.3fr]',
+                        )}
+                    >
+                        {classroom.roster_skipped && (
+                            <Card className="border-dashed">
+                                <CardHeader>
+                                    <CardTitle>No projects yet</CardTitle>
+                                    <CardDescription>
+                                        Your GitHub organization is connected.
+                                        Import a roster when you are ready to
+                                        create project teams.
+                                    </CardDescription>
+                                </CardHeader>
+                            </Card>
+                        )}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    {classroom.roster_skipped
+                                        ? 'Import Canvas roster'
+                                        : '2. Import Canvas roster'}
+                                </CardTitle>
+                                <CardDescription>
+                                    Upload group export. Choose one visibility
+                                    for all team repositories.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Form
+                                    {...storeRoster.form()}
+                                    className="grid gap-5"
+                                >
+                                    {({ errors, processing, progress }) => (
+                                        <>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="roster">
+                                                    Roster CSV
+                                                </Label>
+                                                <Input
+                                                    id="roster"
+                                                    name="roster"
+                                                    type="file"
+                                                    accept=".csv,text/csv"
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.roster}
+                                                />
+                                            </div>
+                                            <fieldset className="grid gap-2">
+                                                <legend className="text-sm font-medium">
+                                                    Repository visibility
+                                                </legend>
+                                                <div className="flex flex-wrap gap-4">
+                                                    {(
+                                                        [
+                                                            'private',
+                                                            'public',
+                                                        ] as const
+                                                    ).map((visibility) => (
+                                                        <label
+                                                            key={visibility}
+                                                            className="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm capitalize"
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                name="repository_visibility"
+                                                                value={
+                                                                    visibility
+                                                                }
+                                                                defaultChecked={
+                                                                    visibility ===
+                                                                    'private'
+                                                                }
+                                                            />
+                                                            {visibility}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <InputError
+                                                    message={
+                                                        errors.repository_visibility
+                                                    }
+                                                />
+                                            </fieldset>
+                                            {progress && (
+                                                <progress
+                                                    className="w-full"
+                                                    value={progress.percentage}
+                                                    max="100"
+                                                />
+                                            )}
+                                            <Button
+                                                size="lg"
+                                                disabled={processing}
+                                                className="w-full sm:w-fit"
+                                            >
+                                                <Upload />{' '}
+                                                {processing
+                                                    ? 'Importing…'
+                                                    : 'Import roster'}
+                                            </Button>
+                                        </>
+                                    )}
+                                </Form>
+                            </CardContent>
+                            {!classroom.roster_skipped && (
+                                <CardFooter className="flex-col items-stretch justify-between gap-4 border-t pt-6 sm:flex-row sm:items-center">
+                                    <p className="text-muted-foreground text-sm">
+                                        You can finish setup and import a roster
+                                        later.
+                                    </p>
+                                    <Form {...skipRosterImport.form()}>
+                                        {({ processing }) => (
+                                            <Button
+                                                type="submit"
+                                                variant="ghost"
+                                                disabled={processing}
+                                            >
+                                                Skip for now
+                                            </Button>
+                                        )}
+                                    </Form>
+                                </CardFooter>
+                            )}
+                        </Card>
+                    </div>
+                )}
+
+                {classroom.installed && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>2. Import Canvas roster</CardTitle>
-                            <CardDescription>
-                                Upload group export. Choose one visibility for
-                                all team repositories.
-                            </CardDescription>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                    <CardTitle>Create a team</CardTitle>
+                                    <CardDescription>
+                                        Add a project without importing it from
+                                        Canvas.
+                                    </CardDescription>
+                                </div>
+                                <Badge variant="secondary">
+                                    Student creation{' '}
+                                    {classroom.student_team_creation_enabled
+                                        ? 'enabled'
+                                        : 'disabled'}
+                                </Badge>
+                            </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
                             <Form
-                                {...storeRoster.form()}
-                                className="grid gap-5"
+                                {...createClassroomGroup.form()}
+                                className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end"
                             >
-                                {({ errors, processing, progress }) => (
+                                {({ errors, processing }) => (
                                     <>
                                         <div className="grid gap-2">
-                                            <Label htmlFor="roster">
-                                                Roster CSV
+                                            <Label htmlFor="team-name">
+                                                Team name
                                             </Label>
                                             <Input
-                                                id="roster"
-                                                name="roster"
-                                                type="file"
-                                                accept=".csv,text/csv"
+                                                id="team-name"
+                                                name="name"
+                                                placeholder="Project Atlas"
                                                 required
                                             />
-                                            <InputError
-                                                message={errors.roster}
-                                            />
+                                            <InputError message={errors.name} />
                                         </div>
-                                        <fieldset className="grid gap-2">
-                                            <legend className="text-sm font-medium">
-                                                Repository visibility
-                                            </legend>
-                                            <div className="flex flex-wrap gap-4">
-                                                {(
-                                                    [
-                                                        'private',
-                                                        'public',
-                                                    ] as const
-                                                ).map((visibility) => (
-                                                    <label
-                                                        key={visibility}
-                                                        className="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm capitalize"
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            name="repository_visibility"
-                                                            value={visibility}
-                                                            defaultChecked={
-                                                                visibility ===
-                                                                'private'
-                                                            }
-                                                        />
-                                                        {visibility}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                            <InputError
-                                                message={
-                                                    errors.repository_visibility
-                                                }
-                                            />
-                                        </fieldset>
-                                        {progress && (
-                                            <progress
-                                                className="w-full"
-                                                value={progress.percentage}
-                                                max="100"
-                                            />
-                                        )}
+                                        <Button disabled={processing}>
+                                            <Plus /> Create team
+                                        </Button>
+                                    </>
+                                )}
+                            </Form>
+                            <Form {...updateTeamCreation.form()}>
+                                {({ processing }) => (
+                                    <>
+                                        <input
+                                            type="hidden"
+                                            name="enabled"
+                                            value={
+                                                classroom.student_team_creation_enabled
+                                                    ? '0'
+                                                    : '1'
+                                            }
+                                        />
                                         <Button
-                                            size="lg"
+                                            type="submit"
+                                            variant="outline"
                                             disabled={processing}
-                                            className="w-full sm:w-fit"
                                         >
-                                            <Upload />{' '}
-                                            {processing
-                                                ? 'Importing…'
-                                                : 'Import roster'}
+                                            <Settings2 />
+                                            {classroom.student_team_creation_enabled
+                                                ? 'Disable student creation'
+                                                : 'Enable student creation'}
                                         </Button>
                                     </>
                                 )}
@@ -402,255 +528,277 @@ export default function Dashboard({
                     </Card>
                 )}
 
-                {classroom.installed && classroom.roster_imported && (
-                    <>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Classroom join link</CardTitle>
-                                <CardDescription>
-                                    Share this permanent link with students.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex flex-col gap-3 sm:flex-row">
-                                <Input
-                                    readOnly
-                                    value={classroom.join_url}
-                                    className="font-mono text-xs"
-                                />
-                                <Button
-                                    variant="outline"
-                                    onClick={copyJoinLink}
-                                >
-                                    <Clipboard /> {copied ? 'Copied' : 'Copy'}
-                                </Button>
-                            </CardContent>
-                        </Card>
-
-                        {classroom.pending_students.length > 0 && (
+                {classroom.installed &&
+                    (classroom.roster_imported || classroom.roster_skipped) && (
+                        <>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>
-                                        Unlinked GitHub accounts
-                                    </CardTitle>
+                                    <CardTitle>Classroom join link</CardTitle>
                                     <CardDescription>
-                                        Match students who skipped roster
-                                        selection to their Canvas name.
+                                        Share this permanent link with students.
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-                                    {classroom.pending_students.map(
-                                        (student) => (
-                                            <Form
-                                                key={student.id}
-                                                {...assignRosterClaim.form(
-                                                    student.id,
-                                                )}
-                                                className="grid gap-3 rounded-lg border p-4"
-                                            >
-                                                {({ processing }) => (
-                                                    <>
-                                                        <div>
-                                                            <p className="font-medium">
-                                                                {student.name}
-                                                            </p>
-                                                            <p className="text-muted-foreground text-xs">
-                                                                {student.github_login
-                                                                    ? `@${student.github_login}`
-                                                                    : 'GitHub username unavailable'}
-                                                            </p>
-                                                        </div>
-                                                        <select
-                                                            name="roster_entry_id"
-                                                            required
-                                                            defaultValue=""
-                                                            className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                                                        >
-                                                            <option
-                                                                value=""
-                                                                disabled
-                                                            >
-                                                                Select Canvas
-                                                                name
-                                                            </option>
-                                                            {classroom.unclaimed_entries.map(
-                                                                (entry) => (
-                                                                    <option
-                                                                        key={
-                                                                            entry.id
-                                                                        }
-                                                                        value={
-                                                                            entry.id
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            entry.name
-                                                                        }{' '}
-                                                                        -{' '}
-                                                                        {
-                                                                            entry.group
-                                                                        }
-                                                                    </option>
-                                                                ),
-                                                            )}
-                                                        </select>
-                                                        <Button
-                                                            type="submit"
-                                                            size="sm"
-                                                            disabled={
-                                                                processing ||
-                                                                classroom
-                                                                    .unclaimed_entries
-                                                                    .length ===
-                                                                    0
-                                                            }
-                                                        >
-                                                            Link student
-                                                        </Button>
-                                                    </>
-                                                )}
-                                            </Form>
-                                        ),
-                                    )}
+                                <CardContent className="flex flex-col gap-3 sm:flex-row">
+                                    <Input
+                                        readOnly
+                                        value={classroom.join_url}
+                                        className="font-mono text-xs"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        onClick={copyJoinLink}
+                                    >
+                                        <Clipboard />{' '}
+                                        {copied ? 'Copied' : 'Copy'}
+                                    </Button>
                                 </CardContent>
                             </Card>
-                        )}
 
-                        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {classroom.groups.map((group) => (
-                                <Card key={group.id} className="h-full">
+                            {classroom.pending_students.length > 0 && (
+                                <Card>
                                     <CardHeader>
-                                        <div className="flex flex-wrap items-start justify-between gap-3">
-                                            <div className="space-y-1">
-                                                <CardTitle>
-                                                    {group.name}
-                                                </CardTitle>
-                                                <CardDescription>
-                                                    {group.students?.filter(
-                                                        (student) =>
-                                                            student.claimed,
-                                                    ).length ?? 0}{' '}
-                                                    of{' '}
-                                                    {group.students?.length ??
-                                                        0}{' '}
-                                                    students joined
-                                                </CardDescription>
-                                            </div>
-                                            <StatusBadge
-                                                status={group.status}
-                                            />
-                                        </div>
+                                        <CardTitle>
+                                            Unlinked GitHub accounts
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Match students who skipped roster
+                                            selection to their Canvas name.
+                                        </CardDescription>
                                     </CardHeader>
-                                    <CardContent className="grid gap-5">
-                                        <div className="flex flex-wrap gap-2">
-                                            {group.team_url && (
-                                                <a
-                                                    className={buttonVariants({
-                                                        variant: 'outline',
-                                                        size: 'sm',
-                                                    })}
-                                                    href={group.team_url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                >
-                                                    Team <ExternalLink />
-                                                </a>
-                                            )}
-                                            {group.repository_url && (
-                                                <a
-                                                    className={buttonVariants({
-                                                        variant: 'outline',
-                                                        size: 'sm',
-                                                    })}
-                                                    href={group.repository_url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                >
-                                                    Repository <ExternalLink />
-                                                </a>
-                                            )}
-                                            {group.pages_url && (
-                                                <a
-                                                    className={buttonVariants({
-                                                        variant: 'outline',
-                                                        size: 'sm',
-                                                    })}
-                                                    href={group.pages_url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                >
-                                                    Pages <ExternalLink />
-                                                </a>
-                                            )}
-                                            {group.status === 'failed' && (
+                                    <CardContent className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                                        {classroom.pending_students.map(
+                                            (student) => (
                                                 <Form
-                                                    {...retryProvisioning.form(
-                                                        group.id,
+                                                    key={student.id}
+                                                    {...assignRosterClaim.form(
+                                                        student.id,
                                                     )}
+                                                    className="grid gap-3 rounded-lg border p-4"
                                                 >
                                                     {({ processing }) => (
-                                                        <Button
-                                                            size="sm"
-                                                            disabled={
-                                                                processing
-                                                            }
-                                                        >
-                                                            <RefreshCw /> Retry
-                                                        </Button>
+                                                        <>
+                                                            <div>
+                                                                <p className="font-medium">
+                                                                    {
+                                                                        student.name
+                                                                    }
+                                                                </p>
+                                                                <p className="text-muted-foreground text-xs">
+                                                                    {student.github_login
+                                                                        ? `@${student.github_login}`
+                                                                        : 'GitHub username unavailable'}
+                                                                </p>
+                                                            </div>
+                                                            <select
+                                                                name="roster_entry_id"
+                                                                required
+                                                                defaultValue=""
+                                                                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                                                            >
+                                                                <option
+                                                                    value=""
+                                                                    disabled
+                                                                >
+                                                                    Select
+                                                                    Canvas name
+                                                                </option>
+                                                                {classroom.unclaimed_entries.map(
+                                                                    (entry) => (
+                                                                        <option
+                                                                            key={
+                                                                                entry.id
+                                                                            }
+                                                                            value={
+                                                                                entry.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                entry.name
+                                                                            }{' '}
+                                                                            -{' '}
+                                                                            {
+                                                                                entry.group
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                            <Button
+                                                                type="submit"
+                                                                size="sm"
+                                                                disabled={
+                                                                    processing ||
+                                                                    classroom
+                                                                        .unclaimed_entries
+                                                                        .length ===
+                                                                        0
+                                                                }
+                                                            >
+                                                                Link student
+                                                            </Button>
+                                                        </>
                                                     )}
                                                 </Form>
-                                            )}
-                                        </div>
-                                        {group.error && (
-                                            <p className="text-destructive text-sm">
-                                                {group.error}
-                                            </p>
+                                            ),
                                         )}
-                                        <div className="divide-y rounded-lg border">
-                                            {group.students?.map((student) => (
-                                                <div
-                                                    key={student.id}
-                                                    className="flex flex-col justify-between gap-2 px-4 py-3 sm:flex-row sm:items-center"
-                                                >
-                                                    <div>
-                                                        <p className="font-medium">
-                                                            {student.name}
-                                                        </p>
-                                                        <p className="text-muted-foreground text-xs">
-                                                            {student.github_login
-                                                                ? `@${student.github_login}`
-                                                                : 'Not joined'}
-                                                        </p>
-                                                    </div>
-                                                    {student.claimed && (
-                                                        <Form
-                                                            {...resetClaim.form(
-                                                                student.id,
-                                                            )}
-                                                        >
-                                                            {({
-                                                                processing,
-                                                            }) => (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    disabled={
-                                                                        processing
-                                                                    }
-                                                                >
-                                                                    Reset claim
-                                                                </Button>
-                                                            )}
-                                                        </Form>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
                                     </CardContent>
                                 </Card>
-                            ))}
-                        </div>
-                    </>
-                )}
+                            )}
+
+                            <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {classroom.groups.map((group) => (
+                                    <Card key={group.id} className="h-full">
+                                        <CardHeader>
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div className="space-y-1">
+                                                    <CardTitle>
+                                                        {group.name}
+                                                    </CardTitle>
+                                                    <CardDescription>
+                                                        {group.students?.filter(
+                                                            (student) =>
+                                                                student.claimed,
+                                                        ).length ?? 0}{' '}
+                                                        of{' '}
+                                                        {group.students
+                                                            ?.length ?? 0}{' '}
+                                                        students joined
+                                                    </CardDescription>
+                                                </div>
+                                                <StatusBadge
+                                                    status={group.status}
+                                                />
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="grid gap-5">
+                                            <div className="flex flex-wrap gap-2">
+                                                {group.team_url && (
+                                                    <a
+                                                        className={buttonVariants(
+                                                            {
+                                                                variant:
+                                                                    'outline',
+                                                                size: 'sm',
+                                                            },
+                                                        )}
+                                                        href={group.team_url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                    >
+                                                        Team <ExternalLink />
+                                                    </a>
+                                                )}
+                                                {group.repository_url && (
+                                                    <a
+                                                        className={buttonVariants(
+                                                            {
+                                                                variant:
+                                                                    'outline',
+                                                                size: 'sm',
+                                                            },
+                                                        )}
+                                                        href={
+                                                            group.repository_url
+                                                        }
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                    >
+                                                        Repository{' '}
+                                                        <ExternalLink />
+                                                    </a>
+                                                )}
+                                                {group.pages_url && (
+                                                    <a
+                                                        className={buttonVariants(
+                                                            {
+                                                                variant:
+                                                                    'outline',
+                                                                size: 'sm',
+                                                            },
+                                                        )}
+                                                        href={group.pages_url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                    >
+                                                        Pages <ExternalLink />
+                                                    </a>
+                                                )}
+                                                {group.status === 'failed' && (
+                                                    <Form
+                                                        {...retryProvisioning.form(
+                                                            group.id,
+                                                        )}
+                                                    >
+                                                        {({ processing }) => (
+                                                            <Button
+                                                                size="sm"
+                                                                disabled={
+                                                                    processing
+                                                                }
+                                                            >
+                                                                <RefreshCw />{' '}
+                                                                Retry
+                                                            </Button>
+                                                        )}
+                                                    </Form>
+                                                )}
+                                            </div>
+                                            {group.error && (
+                                                <p className="text-destructive text-sm">
+                                                    {group.error}
+                                                </p>
+                                            )}
+                                            <div className="divide-y rounded-lg border">
+                                                {group.students?.map(
+                                                    (student) => (
+                                                        <div
+                                                            key={student.id}
+                                                            className="flex flex-col justify-between gap-2 px-4 py-3 sm:flex-row sm:items-center"
+                                                        >
+                                                            <div>
+                                                                <p className="font-medium">
+                                                                    {
+                                                                        student.name
+                                                                    }
+                                                                </p>
+                                                                <p className="text-muted-foreground text-xs">
+                                                                    {student.github_login
+                                                                        ? `@${student.github_login}`
+                                                                        : 'Not joined'}
+                                                                </p>
+                                                            </div>
+                                                            {student.claimed && (
+                                                                <Form
+                                                                    {...resetClaim.form(
+                                                                        student.id,
+                                                                    )}
+                                                                >
+                                                                    {({
+                                                                        processing,
+                                                                    }) => (
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            disabled={
+                                                                                processing
+                                                                            }
+                                                                        >
+                                                                            Reset
+                                                                            claim
+                                                                        </Button>
+                                                                    )}
+                                                                </Form>
+                                                            )}
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </>
+                    )}
             </div>
         </>
     );

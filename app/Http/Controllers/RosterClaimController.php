@@ -22,6 +22,7 @@ class RosterClaimController extends Controller
 
         return Inertia::render('join', [
             'classroom' => ['name' => $classroom->name, 'join_code' => $classroom->join_code],
+            'student_team_creation_enabled' => $classroom->student_team_creation_enabled,
             'claim' => $claim === null ? null : [
                 'name' => $claim->name,
                 'sections' => $claim->sections,
@@ -38,6 +39,19 @@ class RosterClaimController extends Controller
                     ->whereNull('claimed_by_user_id')
                     ->orderBy('name')
                     ->get(['id', 'name', 'sections'])
+                : [],
+            'available_groups' => $claim === null
+                ? $classroom->groups()
+                    ->where('created_manually', true)
+                    ->withCount('rosterEntries')
+                    ->orderBy('name')
+                    ->get()
+                    ->map(fn ($group): array => [
+                        'id' => $group->id,
+                        'name' => $group->name,
+                        'status' => $group->status->value,
+                        'student_count' => $group->roster_entries_count,
+                    ])
                 : [],
         ]);
     }

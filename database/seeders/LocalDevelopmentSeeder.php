@@ -47,6 +47,7 @@ class LocalDevelopmentSeeder extends Seeder
             'github_repository_id' => 'local-repository-1',
             'github_repository_url' => 'https://github.com/temple-capstone/local-demo-team',
             'github_pages_url' => 'https://temple-capstone.github.io/local-demo-team',
+            'created_manually' => true,
         ]);
         $provisioningGroup = $this->group($classroom, 'Accessibility Lab', 'accessibility-lab', GroupStatus::Provisioning);
         $failedGroup = $this->group($classroom, 'Campus Navigator', 'campus-navigator', GroupStatus::Failed, [
@@ -59,6 +60,7 @@ class LocalDevelopmentSeeder extends Seeder
         $this->rosterEntry($classroom, $provisioningGroup, 'taylor-morgan', 'Taylor Morgan', $taylor);
         $this->rosterEntry($classroom, $provisioningGroup, 'casey-nguyen', 'Casey Nguyen');
         $this->rosterEntry($classroom, $failedGroup, 'riley-garcia', 'Riley Garcia');
+        $classroom->rosterEntries()->where('claimed_by_user_id', $pendingStudent->id)->delete();
         $classroom->pendingStudents()->syncWithoutDetaching([$pendingStudent->id]);
     }
 
@@ -77,7 +79,7 @@ class LocalDevelopmentSeeder extends Seeder
         return $user;
     }
 
-    /** @param array<string, string> $attributes */
+    /** @param array<string, mixed> $attributes */
     private function group(
         Classroom $classroom,
         string $name,

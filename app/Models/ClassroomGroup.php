@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string $repository_name
  * @property GroupStatus $status
+ * @property bool $created_manually
  * @property string|null $github_team_id
  * @property string|null $github_team_slug
  * @property string|null $github_team_url
@@ -27,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Classroom $classroom
  * @property-read Collection<int, RosterEntry> $rosterEntries
  */
-#[Fillable(['classroom_id', 'name', 'canvas_group_id', 'canvas_group_reference', 'repository_name', 'status', 'github_team_id', 'github_team_slug', 'github_team_url', 'github_repository_id', 'github_repository_url', 'github_pages_url', 'provisioning_error'])]
+#[Fillable(['classroom_id', 'name', 'canvas_group_id', 'canvas_group_reference', 'repository_name', 'status', 'created_manually', 'github_team_id', 'github_team_slug', 'github_team_url', 'github_repository_id', 'github_repository_url', 'github_pages_url', 'provisioning_error'])]
 class ClassroomGroup extends Model
 {
     /** @use HasFactory<ClassroomGroupFactory> */
@@ -47,6 +48,9 @@ class ClassroomGroup extends Model
 
     protected function casts(): array
     {
-        return ['status' => GroupStatus::class];
+        return [
+            'status' => GroupStatus::class,
+            'created_manually' => 'boolean',
+        ];
     }
 }

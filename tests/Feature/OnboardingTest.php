@@ -38,7 +38,7 @@ test('dashboard creates one classroom for a teacher', function () {
 });
 
 test('teacher imports quoted Canvas roster into groups', function () {
-    $classroom = Classroom::factory()->installed()->create();
+    $classroom = Classroom::factory()->installed()->create(['roster_skipped_at' => now()]);
     $roster = UploadedFile::fake()->createWithContent('roster.csv', rosterCsv());
 
     $response = $this->actingAs($classroom->teacher)->post(route('roster.store'), [
@@ -55,6 +55,164 @@ test('teacher imports quoted Canvas roster into groups', function () {
     ]);
     $this->assertDatabaseCount('classroom_groups', 1);
     $this->assertDatabaseCount('roster_entries', 2);
+    expect($classroom->fresh()->roster_skipped_at)->toBeNull();
+});
+
+test('teacher can skip roster import and return to it later', function () {
+    $classroom = Classroom::factory()->installed()->create();
+
+    $response = $this->actingAs($classroom->teacher)->post(route('roster-import-skips.store'));
+
+    $response->assertRedirect(route('dashboard'));
+    expect($classroom->fresh()->roster_skipped_at)->not->toBeNull()
+        ->and($classroom->fresh()->roster_imported_at)->toBeNull();
+    $this->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('classroom.roster_skipped', true)
+            ->where('classroom.roster_imported', false));
+});
+
+test('teacher cannot skip roster import before installing github', function () {
+    $classroom = Classroom::factory()->create();
+
+    $response = $this->actingAs($classroom->teacher)->post(route('roster-import-skips.store'));
+
+    $response->assertConflict();
+    expect($classroom->fresh()->roster_skipped_at)->toBeNull();
+});
+
+test('teacher can create a team without a roster', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+
+    $response = $this->actingAs($classroom->teacher)->post(route('classroom-groups.store'), [
+        'name' => 'Project Atlas',
+    ]);
+
+    $response->assertRedirect(route('dashboard'));
+    $group = $classroom->groups()->firstOrFail();
+    expect($group->name)->toBe('Project Atlas')
+        ->and($group->repository_name)->toBe('project-atlas')
+        ->and($group->created_manually)->toBeTrue()
+        ->and($classroom->fresh()->roster_skipped_at)->not->toBeNull();
+    Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
+});
+
+test('student can create a team when classroom setting is enabled', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $response = $this->actingAs($student)->post(route('student-classroom-groups.store', $classroom->join_code), [
+        'name' => 'Student Project',
+    ]);
+
+    $response->assertRedirect(route('dashboard'));
+    $group = $classroom->groups()->firstOrFail();
+    expect($group->created_manually)->toBeTrue()
+        ->and($group->rosterEntries()->firstOrFail()->claimed_by_user_id)->toBe($student->id)
+        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
+    Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
+});
+
+test('student can join an existing manually created team', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create([
+        'created_manually' => true,
+        'status' => GroupStatus::Ready,
+    ]);
+    $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $response = $this->actingAs($student)->post(route('student-classroom-group-memberships.store', [
+        $classroom->join_code,
+        $group,
+    ]));
+
+    $response->assertRedirect(route('dashboard'));
+    expect($group->rosterEntries()->firstOrFail()->claimed_by_user_id)->toBe($student->id)
+        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
+    Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
+});
+
+test('student onboarding lists manually created teams to join', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create([
+        'name' => 'Open Source Lab',
+        'created_manually' => true,
+    ]);
+    $student = User::factory()->create();
+
+    $response = $this->actingAs($student)->get(route('classrooms.join', $classroom->join_code));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('available_groups.0.id', $group->id)
+        ->where('available_groups.0.name', 'Open Source Lab')
+        ->where('available_groups.0.student_count', 0));
+});
+
+test('student cannot join a canvas-managed team through manual team membership', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create(['created_manually' => false]);
+    $student = User::factory()->create();
+
+    $response = $this->actingAs($student)->post(route('student-classroom-group-memberships.store', [
+        $classroom->join_code,
+        $group,
+    ]));
+
+    $response->assertNotFound();
+    expect($group->rosterEntries()->exists())->toBeFalse();
+    Queue::assertNothingPushed();
+});
+
+test('teacher can disable student team creation', function () {
+    $classroom = Classroom::factory()->installed()->create();
+
+    $response = $this->actingAs($classroom->teacher)->patch(route('classroom-team-creation.update'), [
+        'enabled' => false,
+    ]);
+
+    $response->assertRedirect(route('dashboard'));
+    expect($classroom->fresh()->student_team_creation_enabled)->toBeFalse();
+});
+
+test('student cannot create a team when classroom setting is disabled', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create([
+        'student_team_creation_enabled' => false,
+    ]);
+    $student = User::factory()->create();
+
+    $response = $this->actingAs($student)->post(route('student-classroom-groups.store', $classroom->join_code), [
+        'name' => 'Blocked Project',
+    ]);
+
+    $response->assertForbidden();
+    expect($classroom->groups()->exists())->toBeFalse();
+    Queue::assertNothingPushed();
+});
+
+test('later roster import preserves manually created teams', function () {
+    $classroom = Classroom::factory()->installed()->create(['roster_skipped_at' => now()]);
+    $manualGroup = ClassroomGroup::factory()->for($classroom)->create([
+        'name' => 'Manual Project',
+        'repository_name' => 'manual-project',
+        'created_manually' => true,
+    ]);
+    $roster = UploadedFile::fake()->createWithContent('roster.csv', rosterCsv());
+
+    $this->actingAs($classroom->teacher)->post(route('roster.store'), [
+        'roster' => $roster,
+        'repository_visibility' => 'private',
+    ])->assertRedirect(route('dashboard'));
+
+    expect($manualGroup->fresh())->not->toBeNull()
+        ->and($classroom->groups()->where('created_manually', false)->count())->toBe(1)
+        ->and($classroom->fresh()->roster_skipped_at)->toBeNull();
 });
 
 test('roster import rejects unexpected headers', function () {

@@ -86,7 +86,7 @@ class ImportRoster
         }
 
         DB::transaction(function () use ($classroom, $rows, $visibility): void {
-            $classroom->groups()->delete();
+            $classroom->groups()->where('created_manually', false)->delete();
 
             foreach (collect($rows)->groupBy('group_name') as $groupName => $groupRows) {
                 $firstRow = $groupRows->first();
@@ -124,6 +124,7 @@ class ImportRoster
             $classroom->update([
                 'repository_visibility' => $visibility,
                 'roster_imported_at' => now(),
+                'roster_skipped_at' => null,
             ]);
         });
     }

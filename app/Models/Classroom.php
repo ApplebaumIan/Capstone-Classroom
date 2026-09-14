@@ -23,12 +23,14 @@ use Illuminate\Support\Carbon;
  * @property string|null $github_organization_login
  * @property string|null $github_installation_id
  * @property Carbon|null $roster_imported_at
+ * @property Carbon|null $roster_skipped_at
+ * @property bool $student_team_creation_enabled
  * @property-read User $teacher
  * @property-read Collection<int, ClassroomGroup> $groups
  * @property-read Collection<int, RosterEntry> $rosterEntries
  * @property-read Collection<int, User> $pendingStudents
  */
-#[Fillable(['teacher_id', 'name', 'join_code', 'repository_visibility', 'github_organization_id', 'github_organization_login', 'github_installation_id', 'roster_imported_at'])]
+#[Fillable(['teacher_id', 'name', 'join_code', 'repository_visibility', 'github_organization_id', 'github_organization_login', 'github_installation_id', 'roster_imported_at', 'roster_skipped_at', 'student_team_creation_enabled'])]
 class Classroom extends Model
 {
     /** @use HasFactory<ClassroomFactory> */
@@ -63,6 +65,8 @@ class Classroom extends Model
         return [
             'repository_visibility' => RepositoryVisibility::class,
             'roster_imported_at' => 'datetime',
+            'roster_skipped_at' => 'datetime',
+            'student_team_creation_enabled' => 'boolean',
         ];
     }
 }

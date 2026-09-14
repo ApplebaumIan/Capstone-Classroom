@@ -19,6 +19,7 @@ test('local database seeding creates an installed classroom with representative 
         ->and($classroom->github_organization_login)->toBe('temple-capstone')
         ->and($classroom->roster_imported_at)->not->toBeNull()
         ->and($classroom->groups()->count())->toBe(3)
+        ->and($classroom->groups()->where('repository_name', 'local-demo-team')->firstOrFail()->created_manually)->toBeTrue()
         ->and($classroom->groups()->pluck('status'))->toContain(
             GroupStatus::Ready,
             GroupStatus::Provisioning,
