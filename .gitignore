@@ -27,3 +27,12 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Laravel Boost agent files
+/.agents/
+/.ai/
+/.codex/
+/.junie/
+/AGENTS.md
+/boost.json
+/opencode.json
