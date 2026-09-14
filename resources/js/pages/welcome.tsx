@@ -2,7 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { Github, GraduationCap, Users } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import { dashboard, login } from '@/routes';
 import { redirect as githubLogin } from '@/routes/github';
 
 export default function Welcome() {
@@ -21,7 +21,7 @@ export default function Welcome() {
                             Capstone Classroom
                         </div>
                         <Link
-                            href={auth.user ? dashboard() : githubLogin()}
+                            href={auth.user ? dashboard() : login()}
                             className={buttonVariants({ variant: 'outline' })}
                         >
                             <Github />{' '}
@@ -42,18 +42,27 @@ export default function Welcome() {
                                 Teams, repositories, access, and project sites
                                 get prepared automatically.
                             </p>
-                            <Link
-                                href={auth.user ? dashboard() : githubLogin()}
-                                className={cn(
-                                    buttonVariants({ size: 'lg' }),
-                                    'bg-[#d94b2b] text-white hover:bg-[#bd3f24]',
-                                )}
-                            >
-                                <Github />{' '}
-                                {auth.user
-                                    ? 'Open dashboard'
-                                    : 'Continue with GitHub'}
-                            </Link>
+                            {auth.user ? (
+                                <Link
+                                    href={dashboard()}
+                                    className={cn(
+                                        buttonVariants({ size: 'lg' }),
+                                        'bg-[#d94b2b] text-white hover:bg-[#bd3f24]',
+                                    )}
+                                >
+                                    <Github /> Open dashboard
+                                </Link>
+                            ) : (
+                                <a
+                                    href={githubLogin.url()}
+                                    className={cn(
+                                        buttonVariants({ size: 'lg' }),
+                                        'bg-[#d94b2b] text-white hover:bg-[#bd3f24]',
+                                    )}
+                                >
+                                    <Github /> Continue with GitHub
+                                </a>
+                            )}
                         </div>
 
                         <div className="relative rounded-[2rem] border border-current/15 bg-[#fffdf7] p-7 shadow-[12px_12px_0_0_#172019] dark:bg-[#19221c] dark:shadow-[12px_12px_0_0_#d94b2b]">
