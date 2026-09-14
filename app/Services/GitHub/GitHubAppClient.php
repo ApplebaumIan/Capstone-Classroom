@@ -99,7 +99,7 @@ class GitHubAppClient
 
         $this->installationRequest($classroom)
             ->put('/orgs/'.$this->segment($classroom->github_organization_login).'/teams/'.$this->segment($group->github_team_slug).'/repos/'.$this->segment($classroom->github_organization_login).'/'.$this->segment($group->repository_name), [
-                'permission' => 'push',
+                'permission' => 'admin',
             ])
             ->throw();
     }
