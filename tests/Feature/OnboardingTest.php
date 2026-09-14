@@ -87,6 +87,89 @@ test('student claims one roster entry and queues group provisioning', function (
     Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
 });
 
+test('student can skip roster selection for teacher linking', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $student = User::factory()->create();
+
+    $response = $this->actingAs($student)->post(route('pending-classroom-students.store', $classroom->join_code));
+
+    $response->assertRedirect(route('home'));
+    expect($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeTrue();
+});
+
+test('pending student is prompted to select a roster entry on dashboard visits', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $response = $this->actingAs($student)->get(route('dashboard'));
+
+    $response->assertRedirect(route('classrooms.join', $classroom->join_code));
+    expect($student->fresh()->classroom)->toBeNull();
+});
+
+test('teacher sees pending github students and available roster entries', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create(['name' => 'Canvas Student']);
+    $student = User::factory()->create(['github_login' => 'octocat']);
+    $classroom->pendingStudents()->attach($student);
+
+    $response = $this->actingAs($classroom->teacher)->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('classroom.pending_students.0.github_login', 'octocat')
+        ->where('classroom.unclaimed_entries.0.id', $entry->id)
+        ->where('classroom.unclaimed_entries.0.group', $group->name));
+});
+
+test('teacher can link a pending github student to a roster entry', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create();
+    $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $response = $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', $student), [
+        'roster_entry_id' => $entry->id,
+    ]);
+
+    $response->assertRedirect(route('dashboard'));
+    expect($entry->fresh()->claimed_by_user_id)->toBe($student->id)
+        ->and($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
+    Queue::assertPushed(ProvisionClassroomGroup::class, fn ($job) => $job->classroomGroupId === $group->id);
+});
+
+test('teacher cannot link a github student pending in another classroom', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $otherClassroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create();
+    $student = User::factory()->create();
+    $otherClassroom->pendingStudents()->attach($student);
+
+    $response = $this->actingAs($classroom->teacher)->post(route('pending-roster-claims.store', $student), [
+        'roster_entry_id' => $entry->id,
+    ]);
+
+    $response->assertNotFound();
+    expect($entry->fresh()->claimed_by_user_id)->toBeNull();
+});
+
+test('student claim clears a pending teacher-link request', function () {
+    Queue::fake([ProvisionClassroomGroup::class]);
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create();
+    $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $this->actingAs($student)->post(route('roster-claims.store', [$classroom->join_code, $entry]));
+
+    expect($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeFalse();
+});
+
 test('student cannot claim a second roster entry', function () {
     Queue::fake([ProvisionClassroomGroup::class]);
     $classroom = Classroom::factory()->installed()->create();
@@ -119,6 +202,7 @@ test('teacher resets a claim and queues GitHub team removal', function () {
 
     $response->assertRedirect(route('dashboard'));
     expect($entry->fresh()->claimed_by_user_id)->toBeNull();
+    expect($classroom->pendingStudents()->whereKey($student->id)->exists())->toBeTrue();
     Queue::assertPushed(RemoveStudentFromGitHubTeam::class, fn ($job) => $job->githubLogin === 'octocat');
 });
 

@@ -29,6 +29,7 @@ import {
     store as storeInstallation,
 } from '@/routes/github/installations';
 import { store as retryProvisioning } from '@/routes/group-provisioning';
+import { store as assignRosterClaim } from '@/routes/pending-roster-claims';
 import { destroy as resetClaim } from '@/routes/roster-claims';
 import { store as storeRoster } from '@/routes/roster';
 
@@ -61,6 +62,16 @@ type Props = {
         student_count: number;
         claimed_count: number;
         groups: Group[];
+        pending_students: Array<{
+            id: number;
+            name: string;
+            github_login: string | null;
+        }>;
+        unclaimed_entries: Array<{
+            id: number;
+            name: string;
+            group: string;
+        }>;
     };
     claim?: {
         name: string;
@@ -414,6 +425,95 @@ export default function Dashboard({
                                 </Button>
                             </CardContent>
                         </Card>
+
+                        {classroom.pending_students.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>
+                                        Unlinked GitHub accounts
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Match students who skipped roster
+                                        selection to their Canvas name.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                                    {classroom.pending_students.map(
+                                        (student) => (
+                                            <Form
+                                                key={student.id}
+                                                {...assignRosterClaim.form(
+                                                    student.id,
+                                                )}
+                                                className="grid gap-3 rounded-lg border p-4"
+                                            >
+                                                {({ processing }) => (
+                                                    <>
+                                                        <div>
+                                                            <p className="font-medium">
+                                                                {student.name}
+                                                            </p>
+                                                            <p className="text-muted-foreground text-xs">
+                                                                {student.github_login
+                                                                    ? `@${student.github_login}`
+                                                                    : 'GitHub username unavailable'}
+                                                            </p>
+                                                        </div>
+                                                        <select
+                                                            name="roster_entry_id"
+                                                            required
+                                                            defaultValue=""
+                                                            className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+                                                        >
+                                                            <option
+                                                                value=""
+                                                                disabled
+                                                            >
+                                                                Select Canvas
+                                                                name
+                                                            </option>
+                                                            {classroom.unclaimed_entries.map(
+                                                                (entry) => (
+                                                                    <option
+                                                                        key={
+                                                                            entry.id
+                                                                        }
+                                                                        value={
+                                                                            entry.id
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            entry.name
+                                                                        }{' '}
+                                                                        -{' '}
+                                                                        {
+                                                                            entry.group
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                        <Button
+                                                            type="submit"
+                                                            size="sm"
+                                                            disabled={
+                                                                processing ||
+                                                                classroom
+                                                                    .unclaimed_entries
+                                                                    .length ===
+                                                                    0
+                                                            }
+                                                        >
+                                                            Link student
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </Form>
+                                        ),
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
 
                         <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
                             {classroom.groups.map((group) => (

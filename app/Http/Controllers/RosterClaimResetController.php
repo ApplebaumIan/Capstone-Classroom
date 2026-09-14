@@ -16,13 +16,18 @@ class RosterClaimResetController extends Controller
         $request->user()->can('update', $rosterEntry->classroom) || abort(404);
 
         $githubLogin = $rosterEntry->claimedBy?->github_login;
+        $claimedUserId = $rosterEntry->claimed_by_user_id;
         $groupId = $rosterEntry->classroom_group_id;
 
-        DB::transaction(function () use ($rosterEntry): void {
+        DB::transaction(function () use ($claimedUserId, $rosterEntry): void {
             RosterEntry::query()->lockForUpdate()->findOrFail($rosterEntry->id)->update([
                 'claimed_by_user_id' => null,
                 'claimed_at' => null,
             ]);
+
+            if ($claimedUserId !== null) {
+                $rosterEntry->classroom->pendingStudents()->syncWithoutDetaching([$claimedUserId]);
+            }
         });
 
         if ($githubLogin !== null && $rosterEntry->group->github_team_slug !== null) {

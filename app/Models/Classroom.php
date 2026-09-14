@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property-read User $teacher
  * @property-read Collection<int, ClassroomGroup> $groups
  * @property-read Collection<int, RosterEntry> $rosterEntries
+ * @property-read Collection<int, User> $pendingStudents
  */
 #[Fillable(['teacher_id', 'name', 'join_code', 'repository_visibility', 'github_organization_id', 'github_organization_login', 'github_installation_id', 'roster_imported_at'])]
 class Classroom extends Model
@@ -48,6 +50,12 @@ class Classroom extends Model
     public function rosterEntries(): HasMany
     {
         return $this->hasMany(RosterEntry::class);
+    }
+
+    /** @return BelongsToMany<User, $this> */
+    public function pendingStudents(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'pending_classroom_students')->withTimestamps();
     }
 
     protected function casts(): array

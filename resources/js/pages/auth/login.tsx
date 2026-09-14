@@ -29,7 +29,7 @@ export default function Login({
                         <p className="text-muted-foreground text-center text-sm">
                             Local development bypass
                         </p>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid gap-3 sm:grid-cols-3">
                             <Form {...localLogin.form('teacher')}>
                                 <button
                                     type="submit"
@@ -54,6 +54,19 @@ export default function Login({
                                     )}
                                 >
                                     <UserRound /> Student
+                                </button>
+                            </Form>
+                            <Form {...localLogin.form('pending-student')}>
+                                <button
+                                    type="submit"
+                                    className={cn(
+                                        buttonVariants({
+                                            variant: 'outline',
+                                        }),
+                                        'w-full',
+                                    )}
+                                >
+                                    <UserRound /> Unlinked
                                 </button>
                             </Form>
                         </div>

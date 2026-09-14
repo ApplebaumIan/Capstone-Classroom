@@ -26,6 +26,7 @@ test('local database seeding creates an installed classroom with representative 
         )
         ->and($classroom->rosterEntries()->count())->toBe(6)
         ->and($classroom->rosterEntries()->whereNotNull('claimed_by_user_id')->count())->toBe(3)
+        ->and($classroom->pendingStudents()->where('github_id', 'sam-rivera')->exists())->toBeTrue()
         ->and(User::query()->where('github_id', 'local-teacher')->exists())->toBeTrue()
         ->and(User::query()->where('github_id', 'local-student')->exists())->toBeTrue();
 });

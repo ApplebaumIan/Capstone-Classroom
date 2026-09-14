@@ -33,6 +33,7 @@ class ClaimRosterEntry
                 'claimed_by_user_id' => $user->id,
                 'claimed_at' => now(),
             ]);
+            $classroom->pendingStudents()->detach($user->id);
 
             return $lockedEntry;
         });

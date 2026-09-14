@@ -4,6 +4,7 @@ import {
     ExternalLink,
     Github,
     RefreshCw,
+    SkipForward,
     UserRoundCheck,
 } from 'lucide-react';
 import InputError from '@/components/input-error';
@@ -14,10 +15,12 @@ import {
     Card,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
 import { join } from '@/routes/classrooms';
+import { store as skipRosterClaim } from '@/routes/pending-classroom-students';
 import { store as claimEntry } from '@/routes/roster-claims';
 
 type Props = {
@@ -179,6 +182,25 @@ export default function JoinClassroom({ classroom, claim, entries }: Props) {
                                 </p>
                             )}
                         </CardContent>
+                        <CardFooter className="flex-col items-stretch justify-between gap-4 border-t pt-6 sm:flex-row sm:items-center">
+                            <p className="text-muted-foreground text-sm">
+                                Can't find your name? Let your teacher link your
+                                GitHub account.
+                            </p>
+                            <Form
+                                {...skipRosterClaim.form(classroom.join_code)}
+                            >
+                                {({ processing }) => (
+                                    <Button
+                                        type="submit"
+                                        variant="ghost"
+                                        disabled={processing}
+                                    >
+                                        Skip for now <SkipForward />
+                                    </Button>
+                                )}
+                            </Form>
+                        </CardFooter>
                     </Card>
                 )}
             </div>

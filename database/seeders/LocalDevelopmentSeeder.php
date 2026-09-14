@@ -25,6 +25,7 @@ class LocalDevelopmentSeeder extends Seeder
         $student = $this->user('local-student', 'Local Student', 'student@capstone.local');
         $jordan = $this->user('jordan-lee', 'Jordan Lee', 'jordan@capstone.local');
         $taylor = $this->user('taylor-morgan', 'Taylor Morgan', 'taylor@capstone.local');
+        $pendingStudent = $this->user('sam-rivera', 'Sam Rivera', 'sam@capstone.local');
 
         $classroom = Classroom::query()->updateOrCreate(
             ['teacher_id' => $teacher->id],
@@ -58,6 +59,7 @@ class LocalDevelopmentSeeder extends Seeder
         $this->rosterEntry($classroom, $provisioningGroup, 'taylor-morgan', 'Taylor Morgan', $taylor);
         $this->rosterEntry($classroom, $provisioningGroup, 'casey-nguyen', 'Casey Nguyen');
         $this->rosterEntry($classroom, $failedGroup, 'riley-garcia', 'Riley Garcia');
+        $classroom->pendingStudents()->syncWithoutDetaching([$pendingStudent->id]);
     }
 
     private function user(string $githubLogin, string $name, string $email): User

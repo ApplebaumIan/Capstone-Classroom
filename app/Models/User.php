@@ -6,7 +6,9 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -26,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Classroom|null $classroom
+ * @property-read Collection<int, Classroom> $pendingClassrooms
  */
 #[Fillable(['github_id', 'github_login', 'avatar_url', 'name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -44,6 +47,12 @@ class User extends Authenticatable
     public function rosterClaims(): HasMany
     {
         return $this->hasMany(RosterEntry::class, 'claimed_by_user_id');
+    }
+
+    /** @return BelongsToMany<Classroom, $this> */
+    public function pendingClassrooms(): BelongsToMany
+    {
+        return $this->belongsToMany(Classroom::class, 'pending_classroom_students')->withTimestamps();
     }
 
     /**

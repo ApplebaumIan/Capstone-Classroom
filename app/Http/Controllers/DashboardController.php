@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClassroomGroup;
 use App\RepositoryVisibility;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -11,7 +12,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
         $claim = $user->rosterClaims()
@@ -29,6 +30,12 @@ class DashboardController extends Controller
                     'group' => $this->groupData($claim->group),
                 ],
             ]);
+        }
+
+        $pendingClassroom = $user->pendingClassrooms()->first();
+
+        if ($pendingClassroom !== null) {
+            return to_route('classrooms.join', $pendingClassroom->join_code);
         }
 
         $classroom = $user->classroom()->firstOrCreate([], [
@@ -62,6 +69,21 @@ class DashboardController extends Controller
                         'claimed' => $entry->claimed_by_user_id !== null,
                     ]),
                 ]),
+                'pending_students' => $classroom->pendingStudents()
+                    ->orderBy('github_login')
+                    ->get()
+                    ->map(fn ($student): array => [
+                        'id' => $student->id,
+                        'name' => $student->name,
+                        'github_login' => $student->github_login,
+                    ]),
+                'unclaimed_entries' => $classroom->groups->flatMap(fn ($group) => $group->rosterEntries
+                    ->whereNull('claimed_by_user_id')
+                    ->map(fn ($entry): array => [
+                        'id' => $entry->id,
+                        'name' => $entry->name,
+                        'group' => $group->name,
+                    ]))->values(),
             ],
             'available_installations' => session('github.available_installations', []),
         ]);

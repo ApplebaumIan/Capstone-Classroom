@@ -60,6 +60,20 @@ test('local student bypass authenticates into the student dashboard', function (
             ->where('claim.group.name', 'Local Demo Team'));
 });
 
+test('local unlinked student bypass opens roster selection', function () {
+    $this->app['env'] = 'local';
+    $this->withoutMiddleware(PreventRequestForgery::class);
+    $this->seed(LocalDevelopmentSeeder::class);
+
+    $response = $this->post(route('local.login', 'pending-student'));
+
+    $response->assertRedirect(route('dashboard'));
+    $student = User::query()->where('email', 'sam@capstone.local')->firstOrFail();
+    $this->assertAuthenticatedAs($student);
+    $this->get(route('dashboard'))
+        ->assertRedirect(route('classrooms.join', 'local-capstone-classroom'));
+});
+
 test('local authentication bypass is unavailable outside the local environment', function () {
     $this->post(route('local.login', 'teacher'))->assertNotFound();
 
