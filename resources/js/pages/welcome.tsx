@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Github, GraduationCap, Users } from 'lucide-react';
+import { BookOpen, Github, GraduationCap, Users } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { dashboard, login } from '@/routes';
@@ -43,27 +43,41 @@ export default function Welcome() {
                                 Teams, repositories, access, and project sites
                                 get prepared automatically.
                             </p>
-                            {auth.user ? (
-                                <Link
-                                    href={dashboard()}
-                                    className={cn(
-                                        buttonVariants({ size: 'lg' }),
-                                        'bg-[#d94b2b] text-white hover:bg-[#bd3f24]',
-                                    )}
-                                >
-                                    <Github /> Open dashboard
-                                </Link>
-                            ) : (
+                            <div className="flex flex-wrap gap-5">
+                                {auth.user ? (
+                                    <Link
+                                        href={dashboard()}
+                                        className={cn(
+                                            buttonVariants({ size: 'lg' }),
+                                            'min-w-44 bg-[#d94b2b] text-white hover:bg-[#bd3f24]',
+                                        )}
+                                    >
+                                        <Github /> Open dashboard
+                                    </Link>
+                                ) : (
+                                    <a
+                                        href={githubLogin.url()}
+                                        className={cn(
+                                            buttonVariants({ size: 'lg' }),
+                                            'min-w-44 bg-[#d94b2b] text-white hover:bg-[#bd3f24]',
+                                        )}
+                                    >
+                                        <Github /> Continue with GitHub
+                                    </a>
+                                )}
                                 <a
-                                    href={githubLogin.url()}
+                                    href="/docusaurus"
                                     className={cn(
-                                        buttonVariants({ size: 'lg' }),
-                                        'bg-[#d94b2b] text-white hover:bg-[#bd3f24]',
+                                        buttonVariants({
+                                            variant: 'outline',
+                                            size: 'lg',
+                                        }),
+                                        'min-w-44',
                                     )}
                                 >
-                                    <Github /> Continue with GitHub
+                                    <BookOpen /> Learn More
                                 </a>
-                            )}
+                            </div>
                         </div>
 
                         <div className="relative rounded-[2rem] border border-current/15 bg-[#fffdf7] p-7 shadow-[12px_12px_0_0_#172019] dark:bg-[#19221c] dark:shadow-[12px_12px_0_0_#d94b2b]">
