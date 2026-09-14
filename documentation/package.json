@@ -1,0 +1,63 @@
+{
+    "name": "project-documentation",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "prestart": "create-project-docs check --startup",
+        "start": "docusaurus start --host 0.0.0.0",
+        "build": "docusaurus build",
+        "deploy": "docusaurus deploy",
+        "serve": "docusaurus serve",
+        "clear": "docusaurus clear",
+        "docs:list": "create-project-docs section list",
+        "docs:add": "create-project-docs section add",
+        "docs:update": "create-project-docs section update",
+        "docs:check": "create-project-docs check",
+        "docs:upgrade": "create-project-docs update all"
+    },
+    "dependencies": {
+        "@docusaurus/core": "3.9.2",
+        "@docusaurus/plugin-content-docs": "3.9.2",
+        "@docusaurus/preset-classic": "3.9.2",
+        "@docusaurus/theme-classic": "3.9.2",
+        "@docusaurus/theme-common": "3.9.2",
+        "@docusaurus/theme-live-codeblock": "3.9.2",
+        "@docusaurus/theme-mermaid": "3.9.2",
+        "@docusaurus/utils": "3.9.2",
+        "@mdx-js/react": "3.0.1",
+        "@tu-cis-courses/docusaurus-components": "1.0.0-beta.1",
+        "@tu-cis-courses/docusaurus-preset": "1.0.0-next.2",
+        "clsx": "^2.1.1",
+        "mermaid": "11.10.1",
+        "prism-react-renderer": "^2.4.1",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "webpack": "5.101.3"
+    },
+    "devDependencies": {
+        "@docusaurus/module-type-aliases": "3.9.2",
+        "@docusaurus/types": "3.9.2",
+        "@tu-cis-courses/create-project-docs": "1.0.0-next.4",
+        "@tu-cis-courses/docs-content-template": "1.0.0-beta.1",
+        "@tu-cis-courses/docusaurus-template": "1.0.0-next.4"
+    },
+    "resolutions": {
+        "**/mermaid": "11.10.1",
+        "**/webpack": "5.101.3",
+        "mermaid": "11.10.1",
+        "webpack": "5.101.3"
+    },
+    "browserslist": {
+        "production": [
+            ">0.5%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    },
+    "packageManager": "yarn@1.22.22"
+}
