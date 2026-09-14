@@ -35,7 +35,8 @@ export default function Welcome() {
                                 <s>GitHub Classroom</s> Capstone Classroom
                             </p>
                             <h1 className="max-w-4xl text-5xl leading-[0.98] font-semibold tracking-[-0.045em] sm:text-7xl">
-                                Setup software project teams for your class in <span className="text-[#d94b2b]">minutes.</span>
+                                Setup software project teams for your class in{' '}
+                                <span className="text-[#d94b2b]">minutes.</span>
                             </h1>
                             <p className="max-w-2xl text-lg leading-8 text-current/70">
                                 Import one roster. Students claim their names.
