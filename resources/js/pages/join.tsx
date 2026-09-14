@@ -47,7 +47,7 @@ export default function JoinClassroom({ classroom, claim, entries }: Props) {
     return (
         <>
             <Head title={`Join ${classroom.name}`} />
-            <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-4 md:p-8">
+            <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-4 md:p-8">
                 <div className="space-y-2">
                     <Badge variant="outline">Student onboarding</Badge>
                     <h1 className="text-3xl font-semibold tracking-tight">
@@ -137,10 +137,14 @@ export default function JoinClassroom({ classroom, claim, entries }: Props) {
                                 Claim cannot be changed without teacher reset.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="grid gap-3">
-                            <InputError
-                                message={usePage().props.errors.roster_entry}
-                            />
+                        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            <div className="col-span-full">
+                                <InputError
+                                    message={
+                                        usePage().props.errors.roster_entry
+                                    }
+                                />
+                            </div>
                             {entries.map((entry) => (
                                 <Form
                                     key={entry.id}
@@ -148,11 +152,12 @@ export default function JoinClassroom({ classroom, claim, entries }: Props) {
                                         classroom: classroom.join_code,
                                         rosterEntry: entry.id,
                                     })}
+                                    className="h-full"
                                 >
                                     {({ processing }) => (
                                         <Button
                                             variant="outline"
-                                            className="h-auto w-full justify-between p-4 text-left"
+                                            className="h-full min-h-20 w-full justify-between p-4 text-left"
                                             disabled={processing}
                                         >
                                             <span>
@@ -169,7 +174,7 @@ export default function JoinClassroom({ classroom, claim, entries }: Props) {
                                 </Form>
                             ))}
                             {entries.length === 0 && (
-                                <p className="text-muted-foreground py-8 text-center text-sm">
+                                <p className="text-muted-foreground col-span-full py-8 text-center text-sm">
                                     No unclaimed roster entries remain.
                                 </p>
                             )}

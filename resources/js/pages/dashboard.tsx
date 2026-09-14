@@ -197,7 +197,7 @@ export default function Dashboard({
     return (
         <>
             <Head title="Classroom" />
-            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-4 md:p-8">
+            <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 md:p-8">
                 <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
                     <div className="space-y-2">
                         <Badge variant="outline">Teacher workspace</Badge>
@@ -415,9 +415,9 @@ export default function Dashboard({
                             </CardContent>
                         </Card>
 
-                        <div className="grid gap-4">
+                        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
                             {classroom.groups.map((group) => (
-                                <Card key={group.id}>
+                                <Card key={group.id} className="h-full">
                                     <CardHeader>
                                         <div className="flex flex-wrap items-start justify-between gap-3">
                                             <div className="space-y-1">
