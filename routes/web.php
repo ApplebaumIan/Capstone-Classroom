@@ -43,6 +43,7 @@ Route::middleware('auth')->group(function () {
     Route::post('classrooms', [ClassroomController::class, 'store'])->name('classrooms.store');
     Route::get('classrooms/{classroom}/setup', [ClassroomController::class, 'edit'])->name('classrooms.edit');
     Route::put('classrooms/{classroom}', [ClassroomController::class, 'update'])->name('classrooms.update');
+    Route::delete('classrooms/{classroom}', [ClassroomController::class, 'destroy'])->name('classrooms.destroy');
     Route::get('classrooms/{classroom}/students', ClassroomStudentController::class)->name('classrooms.students');
     Route::get('classrooms/{classroom}/teams', ClassroomTeamController::class)->name('classrooms.teams');
     Route::get('github/install', [GitHubInstallationController::class, 'create'])->name('github.installations.create');

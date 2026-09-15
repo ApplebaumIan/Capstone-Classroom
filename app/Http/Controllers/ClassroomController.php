@@ -100,6 +100,24 @@ class ClassroomController extends Controller
         return to_route('classrooms.students', $classroom)->with('success', 'Classroom setup complete.');
     }
 
+    public function destroy(Request $request, Classroom $classroom): RedirectResponse
+    {
+        $this->authorizeOwner($request, $classroom);
+        $validated = $request->validate([
+            'confirmation' => ['required', 'string'],
+        ]);
+
+        if (! hash_equals($classroom->name, $validated['confirmation'])) {
+            throw ValidationException::withMessages([
+                'confirmation' => 'Enter the classroom name exactly to confirm deletion.',
+            ]);
+        }
+
+        $classroom->delete();
+
+        return to_route('dashboard')->with('success', 'Classroom deleted. GitHub repositories and teams were preserved.');
+    }
+
     private function formResponse(?Classroom $classroom = null): Response
     {
         return Inertia::render('classrooms/create', [

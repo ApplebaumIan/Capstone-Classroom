@@ -1,4 +1,4 @@
-import { Head, Link, usePage, usePoll } from '@inertiajs/react';
+import { Form, Head, Link, usePage, usePoll } from '@inertiajs/react';
 import {
     CheckCircle2,
     ExternalLink,
@@ -7,8 +7,11 @@ import {
     Plus,
     RefreshCw,
     School,
+    Trash2,
     Users,
 } from 'lucide-react';
+import { useState } from 'react';
+import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -20,9 +23,22 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes';
 import {
     create as createClassroom,
+    destroy as destroyClassroom,
     edit as editClassroom,
     students,
     teams,
@@ -40,15 +56,7 @@ type Group = {
 
 type Props = {
     mode: 'teacher' | 'student';
-    classrooms?: Array<{
-        id: number;
-        name: string;
-        organization: string | null;
-        installed: boolean;
-        student_count: number;
-        claimed_count: number;
-        team_count: number;
-    }>;
+    classrooms?: TeacherClassroom[];
     claim?: {
         name: string;
         sections: string;
@@ -56,6 +64,16 @@ type Props = {
         join_url: string;
         group: Group;
     };
+};
+
+type TeacherClassroom = {
+    id: number;
+    name: string;
+    organization: string | null;
+    installed: boolean;
+    student_count: number;
+    claimed_count: number;
+    team_count: number;
 };
 
 function StatusBadge({ status }: { status: Group['status'] }) {
@@ -145,6 +163,77 @@ function StudentDashboard({ claim }: { claim: NonNullable<Props['claim']> }) {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+function DeleteClassroomDialog({ classroom }: { classroom: TeacherClassroom }) {
+    const [confirmation, setConfirmation] = useState('');
+
+    return (
+        <Dialog
+            onOpenChange={(open) => {
+                if (!open) {
+                    setConfirmation('');
+                }
+            }}
+        >
+            <DialogTrigger asChild>
+                <Button variant="destructive">
+                    <Trash2 /> Delete
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Delete {classroom.name}?</DialogTitle>
+                    <DialogDescription>
+                        This permanently deletes the classroom, roster, teams,
+                        and sync history from Capstone Classroom. GitHub
+                        repositories and teams will remain unchanged.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...destroyClassroom.form(classroom.id)}>
+                    {({ errors, processing }) => (
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label
+                                    htmlFor={`delete-classroom-${classroom.id}`}
+                                >
+                                    Type <strong>{classroom.name}</strong> to
+                                    confirm
+                                </Label>
+                                <Input
+                                    id={`delete-classroom-${classroom.id}`}
+                                    name="confirmation"
+                                    value={confirmation}
+                                    onChange={(event) =>
+                                        setConfirmation(event.target.value)
+                                    }
+                                    autoComplete="off"
+                                />
+                                <InputError message={errors.confirmation} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button
+                                    type="submit"
+                                    variant="destructive"
+                                    disabled={
+                                        processing ||
+                                        confirmation !== classroom.name
+                                    }
+                                >
+                                    <Trash2 /> Delete classroom
+                                </Button>
+                            </DialogFooter>
+                        </div>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -276,6 +365,9 @@ export default function Dashboard({ mode, classrooms = [], claim }: Props) {
                                             </Link>
                                         </Button>
                                     )}
+                                    <DeleteClassroomDialog
+                                        classroom={classroom}
+                                    />
                                 </CardFooter>
                             </Card>
                         ))}

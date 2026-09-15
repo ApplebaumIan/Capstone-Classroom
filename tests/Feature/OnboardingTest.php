@@ -5,6 +5,7 @@ use App\Jobs\ProvisionClassroomGroup;
 use App\Jobs\RemoveStudentFromGitHubTeam;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
+use App\Models\GitHubSyncIssue;
 use App\Models\RosterEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -453,6 +454,59 @@ test('teacher classroom pages are private to their owner', function () {
     $this->post(route('roster.store', $classroom))->assertNotFound();
     $this->post(route('group-provisioning.store', [$classroom, $group]))->assertNotFound();
     $this->put(route('classrooms.update', $classroom), [])->assertNotFound();
+});
+
+test('teacher deletes classroom data after confirming its exact name', function () {
+    $classroom = Classroom::factory()->installed()->create(['name' => 'CIS 4398 Fall']);
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $student = User::factory()->create();
+    RosterEntry::factory()->for($classroom)->for($group, 'group')->create([
+        'claimed_by_user_id' => $student->id,
+    ]);
+    $classroom->pendingStudents()->attach(User::factory()->create());
+    GitHubSyncIssue::factory()->for($group, 'classroomGroup')->create();
+
+    $this->actingAs($classroom->teacher)
+        ->delete(route('classrooms.destroy', $classroom), [
+            'confirmation' => 'CIS 4398 Fall',
+        ])
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas('success', 'Classroom deleted. GitHub repositories and teams were preserved.');
+
+    $this->assertDatabaseMissing('classrooms', ['id' => $classroom->id]);
+    $this->assertDatabaseMissing('classroom_groups', ['id' => $group->id]);
+    $this->assertDatabaseMissing('roster_entries', ['classroom_id' => $classroom->id]);
+    $this->assertDatabaseMissing('pending_classroom_students', ['classroom_id' => $classroom->id]);
+    $this->assertDatabaseMissing('github_sync_issues', ['classroom_group_id' => $group->id]);
+    $this->assertDatabaseHas('users', ['id' => $student->id]);
+});
+
+test('teacher must confirm exact classroom name before deletion', function () {
+    $classroom = Classroom::factory()->create(['name' => 'CIS 4398 Fall']);
+
+    $this->actingAs($classroom->teacher)
+        ->from(route('dashboard'))
+        ->delete(route('classrooms.destroy', $classroom), [
+            'confirmation' => 'cis 4398 fall',
+        ])
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHasErrors([
+            'confirmation' => 'Enter the classroom name exactly to confirm deletion.',
+        ]);
+
+    $this->assertDatabaseHas('classrooms', ['id' => $classroom->id]);
+});
+
+test('another teacher cannot delete classroom', function () {
+    $classroom = Classroom::factory()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->delete(route('classrooms.destroy', $classroom), [
+            'confirmation' => $classroom->name,
+        ])
+        ->assertNotFound();
+
+    $this->assertDatabaseHas('classrooms', ['id' => $classroom->id]);
 });
 
 test('classroom owner sees teacher testing mode instead of canvas identities', function () {
