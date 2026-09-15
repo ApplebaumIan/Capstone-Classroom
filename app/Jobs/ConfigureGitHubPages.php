@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\GroupStatus;
 use App\Models\ClassroomGroup;
 use App\Services\GitHub\GitHubAppClient;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -43,6 +44,7 @@ class ConfigureGitHubPages implements ShouldBeUnique, ShouldQueue
     public function failed(?Throwable $exception): void
     {
         ClassroomGroup::query()->whereKey($this->classroomGroupId)->update([
+            'status' => GroupStatus::Failed,
             'provisioning_error' => $exception?->getMessage() ?? 'GitHub Pages configuration failed.',
         ]);
     }

@@ -56,10 +56,7 @@ class ProvisionClassroomGroup implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        $github->triggerPagesDeployment($group);
-        $group->update(['status' => GroupStatus::Ready]);
-
-        ConfigureGitHubPages::dispatch($group->id)->delay(now()->addSeconds(30));
+        InitializeGitHubRepository::dispatch($group->id)->delay(now()->addSeconds(5));
     }
 
     public function uniqueId(): string

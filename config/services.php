@@ -45,6 +45,7 @@ return [
         'api_version' => env('GITHUB_API_VERSION', '2026-03-10'),
         'template_owner' => env('GITHUB_TEMPLATE_OWNER', 'ApplebaumIan'),
         'template_repository' => env('GITHUB_TEMPLATE_REPOSITORY', 'tu-cis-4398-docs-template'),
+        'template_readiness_path' => env('GITHUB_TEMPLATE_READINESS_PATH', '.github/workflows/deploy.yml'),
     ],
 
 ];

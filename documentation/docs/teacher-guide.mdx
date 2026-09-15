@@ -4,7 +4,7 @@ title: Teacher setup
 description: Create a classroom, connect GitHub, import a roster, and invite students.
 ---
 
-import {Figure} from '@tu-cis-courses/docusaurus-components';
+import { Figure } from '@tu-cis-courses/docusaurus-components';
 import signin from '@site/static/img/guides/sign-in.png';
 import roster from '@site/static/img/guides/teacher-roster.png';
 
@@ -17,9 +17,9 @@ The normal setup has four steps and only needs to be completed once per class.
 Select **Continue with GitHub**. Use the GitHub account that can install apps in your course organization.
 
 <Figure
-  src={signin}
-  alt="Capstone Classroom sign-in page with the Continue with GitHub button"
-  caption="Use one GitHub sign-in for Capstone Classroom and organization setup."
+    src={signin}
+    alt="Capstone Classroom sign-in page with the Continue with GitHub button"
+    caption="Use one GitHub sign-in for Capstone Classroom and organization setup."
 />
 
 :::note GitHub email
@@ -54,9 +54,9 @@ Open **Student Roster** for the classroom. Under **Import Canvas roster**:
 3. Select **Import roster**.
 
 <Figure
-  src={roster}
-  alt="Student Roster page showing the classroom join link and student list"
-  caption="The Student Roster page keeps the permanent join link and roster status together."
+    src={roster}
+    alt="Student Roster page showing the classroom join link and student list"
+    caption="The Student Roster page keeps the permanent join link and roster status together."
 />
 
 Capstone Classroom expects the standard group export columns in this exact order:
@@ -86,11 +86,11 @@ The classroom dashboard shows linked students and team counts at a glance. Use:
 
 Team statuses mean:
 
-| Status | Meaning |
-| --- | --- |
-| **Waiting** | No student has triggered setup yet. |
-| **Provisioning** | GitHub resources are being prepared. The page refreshes automatically. |
-| **Ready** | The team, repository, and access are available. |
+| Status              | Meaning                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| **Waiting**         | No student has triggered setup yet.                                                    |
+| **Provisioning**    | GitHub resources are being prepared. The page refreshes automatically.                 |
+| **Ready**           | The team, repository, and access are available.                                        |
 | **Needs attention** | GitHub setup failed. Read the message and select **Retry** after correcting the cause. |
 
 :::tip Test before sharing

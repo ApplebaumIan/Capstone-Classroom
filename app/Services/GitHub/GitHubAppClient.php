@@ -7,6 +7,7 @@ use App\Models\ClassroomGroup;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class GitHubAppClient
@@ -74,6 +75,12 @@ class GitHubAppClient
                 throw new RuntimeException("A GitHub repository named {$group->repository_name} already exists and is not managed by this classroom.");
             }
 
+            Log::info('Found existing GitHub classroom repository.', [
+                'classroom_group_id' => $group->id,
+                'github_repository_id' => $repository['id'] ?? null,
+                'default_branch' => $repository['default_branch'] ?? null,
+            ]);
+
             return $repository;
         }
 
@@ -81,7 +88,7 @@ class GitHubAppClient
             $response->throw();
         }
 
-        return $this->installationRequest($classroom)
+        $repository = $this->installationRequest($classroom)
             ->post('/repos/'.config('services.github.template_owner').'/'.config('services.github.template_repository').'/generate', [
                 'owner' => $classroom->github_organization_login,
                 'name' => $group->repository_name,
@@ -91,6 +98,14 @@ class GitHubAppClient
             ])
             ->throw()
             ->json();
+
+        Log::info('Generated GitHub classroom repository.', [
+            'classroom_group_id' => $group->id,
+            'github_repository_id' => $repository['id'] ?? null,
+            'default_branch' => $repository['default_branch'] ?? null,
+        ]);
+
+        return $repository;
     }
 
     public function grantTeamRepository(ClassroomGroup $group): void
@@ -132,6 +147,11 @@ class GitHubAppClient
         $response = $this->installationRequest($classroom)->get($path);
 
         if ($response->successful()) {
+            Log::info('GitHub classroom deployment marker already exists.', [
+                'classroom_group_id' => $group->id,
+                'github_repository_id' => $group->github_repository_id,
+            ]);
+
             return;
         }
 
@@ -146,6 +166,34 @@ class GitHubAppClient
                 'group' => $group->name,
             ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT)."\n"),
         ])->throw();
+
+        Log::info('Created GitHub classroom deployment marker.', [
+            'classroom_group_id' => $group->id,
+            'github_repository_id' => $group->github_repository_id,
+        ]);
+    }
+
+    public function hasRepositoryTemplateContents(ClassroomGroup $group): bool
+    {
+        $classroom = $group->classroom;
+        $templatePath = ltrim((string) config('services.github.template_readiness_path'), '/');
+        $path = '/repos/'.$this->segment($classroom->github_organization_login).'/'.$this->segment($group->repository_name).'/contents/'.$templatePath;
+        $response = $this->installationRequest($classroom)->get($path);
+
+        Log::info('Checked GitHub classroom repository template readiness.', [
+            'classroom_group_id' => $group->id,
+            'github_repository_id' => $group->github_repository_id,
+            'template_path' => $templatePath,
+            'status' => $response->status(),
+        ]);
+
+        if ($response->notFound()) {
+            return false;
+        }
+
+        $response->throw();
+
+        return $response->json('type') === 'file';
     }
 
     public function hasPagesBranch(ClassroomGroup $group): bool
