@@ -39,6 +39,8 @@ Route::middleware('auth')->group(function () {
     Route::get('classrooms/{classroom}/students', ClassroomStudentController::class)->name('classrooms.students');
     Route::get('classrooms/{classroom}/teams', ClassroomTeamController::class)->name('classrooms.teams');
     Route::get('github/install', [GitHubInstallationController::class, 'create'])->name('github.installations.create');
+    Route::get('github/install/app', [GitHubInstallationController::class, 'edit'])->name('github.installations.edit');
+    Route::post('github/installations', [GitHubInstallationController::class, 'store'])->name('github.installations.store');
     Route::post('classrooms/{classroom}/roster', [RosterController::class, 'store'])->name('roster.store');
     Route::post('classrooms/{classroom}/roster/import-skip', RosterImportSkipController::class)->name('roster-import-skips.store');
     Route::post('classrooms/{classroom}/groups', [ClassroomGroupController::class, 'store'])->name('classroom-groups.store');

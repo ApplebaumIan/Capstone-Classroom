@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GithubProvider;
 
 uses(RefreshDatabase::class);
 
@@ -630,4 +632,87 @@ test('teacher cannot connect a spoofed GitHub installation', function () {
         'installation_id' => 'That GitHub App installation is not available to your account.',
     ]);
     expect($teacher->classrooms()->exists())->toBeFalse();
+});
+
+test('teacher starts github organization setup with oauth', function () {
+    $teacher = User::factory()->create();
+    $provider = Mockery::mock(GithubProvider::class);
+    $provider->shouldReceive('redirectUrl')->once()->andReturnSelf();
+    $provider->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect()->away('https://github.com/login/oauth/authorize'));
+    Socialite::shouldReceive('driver')->once()->with('github')->andReturn($provider);
+
+    $response = $this->actingAs($teacher)->get(route('github.installations.create'));
+
+    $response->assertRedirect('https://github.com/login/oauth/authorize')
+        ->assertSessionHas('github.installation_pending', true);
+});
+
+test('teacher opens github app installation separately', function () {
+    config(['services.github.app_slug' => 'capstone-preview']);
+    $teacher = User::factory()->create();
+
+    $response = $this->actingAs($teacher)->get(route('github.installations.edit'));
+
+    $response->assertRedirect('https://github.com/apps/capstone-preview/installations/new');
+});
+
+test('teacher refreshes github organizations after installation', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.github.com/user/installations*' => Http::response([
+            'installations' => [[
+                'id' => 123,
+                'target_type' => 'Organization',
+                'account' => [
+                    'id' => 456,
+                    'login' => 'temple',
+                    'avatar_url' => 'https://avatars.example.com/temple',
+                ],
+            ]],
+        ]),
+    ]);
+    $classroom = Classroom::factory()->create([
+        'github_installation_id' => null,
+        'github_organization_id' => null,
+        'github_organization_login' => null,
+    ]);
+
+    $response = $this->actingAs($classroom->teacher)
+        ->withSession([
+            'github.installation_pending' => true,
+            'github.installation_classroom_id' => $classroom->id,
+            'github.user_access_token' => Crypt::encryptString('user-token'),
+        ])
+        ->post(route('github.installations.store'));
+
+    $response->assertRedirect(route('classrooms.edit', $classroom, absolute: false))
+        ->assertSessionHas('github.available_installations', [[
+            'id' => '123',
+            'account_id' => '456',
+            'login' => 'temple',
+            'avatar_url' => 'https://avatars.example.com/temple',
+        ]]);
+});
+
+test('teacher must reconnect github before refreshing organizations', function () {
+    $teacher = User::factory()->create();
+
+    $response = $this->actingAs($teacher)
+        ->post(route('github.installations.store'));
+
+    $response->assertSessionHasErrors([
+        'github' => 'Reconnect GitHub before refreshing organizations.',
+    ]);
+});
+
+test('student cannot start github organization setup', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $this->actingAs($student)
+        ->get(route('github.installations.create'))
+        ->assertForbidden();
 });

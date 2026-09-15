@@ -16,7 +16,11 @@ import {
     store as storeClassroom,
     update as updateClassroom,
 } from '@/routes/classrooms';
-import { create as installGitHub } from '@/routes/github/installations';
+import {
+    create as connectGitHub,
+    edit as installGitHub,
+    store as refreshGitHub,
+} from '@/routes/github/installations';
 
 type Props = {
     classroom: { id: number; name: string } | null;
@@ -26,16 +30,18 @@ type Props = {
         login: string;
         avatar_url: string | null;
     }>;
+    github_connected: boolean;
 };
 
 export default function CreateClassroom({
     classroom,
     available_installations,
+    github_connected,
 }: Props) {
     const form = classroom
         ? updateClassroom.form(classroom.id)
         : storeClassroom.form();
-    const installUrl = installGitHub({
+    const connectUrl = connectGitHub({
         query: classroom ? { classroom: classroom.id } : {},
     });
 
@@ -65,11 +71,15 @@ export default function CreateClassroom({
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-wrap gap-3">
-                            <Button asChild size="lg">
-                                <a href={installUrl.url}>
-                                    <Github /> Choose organization
-                                </a>
-                            </Button>
+                            {github_connected ? (
+                                <GitHubInstallationControls />
+                            ) : (
+                                <Button asChild size="lg">
+                                    <a href={connectUrl.url}>
+                                        <Github /> Connect GitHub
+                                    </a>
+                                </Button>
+                            )}
                             <Button asChild variant="outline" size="lg">
                                 <Link href={dashboard()}>Cancel</Link>
                             </Button>
@@ -176,11 +186,43 @@ export default function CreateClassroom({
                                     </>
                                 )}
                             </Form>
+                            <div className="mt-6 border-t pt-6">
+                                <GitHubInstallationControls />
+                            </div>
                         </CardContent>
                     </Card>
                 )}
             </div>
         </>
+    );
+}
+
+function GitHubInstallationControls() {
+    return (
+        <div className="flex flex-wrap gap-3">
+            <Button asChild size="lg">
+                <a href={installGitHub.url()} target="_blank" rel="noreferrer">
+                    <Github /> Install or configure app
+                </a>
+            </Button>
+            <Form {...refreshGitHub.form()}>
+                {({ errors, processing }) => (
+                    <div className="grid gap-2">
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            size="lg"
+                            disabled={processing}
+                        >
+                            {processing
+                                ? 'Refreshing…'
+                                : 'Refresh organizations'}
+                        </Button>
+                        <InputError message={errors.github} />
+                    </div>
+                )}
+            </Form>
+        </div>
     );
 }
 

@@ -105,6 +105,7 @@ class ClassroomController extends Controller
                 'name' => $classroom->name,
             ],
             'available_installations' => session('github.available_installations', []),
+            'github_connected' => is_string(session('github.user_access_token')),
         ]);
     }
 
