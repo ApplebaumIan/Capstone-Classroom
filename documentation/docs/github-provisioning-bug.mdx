@@ -1,0 +1,77 @@
+---
+sidebar_position: 2
+---
+
+# GitHub Provisioning Bug Investigation
+
+## Issue summary
+
+Some student repositories were created in GitHub, but provisioning never completed. The resulting repository contained only `.capstone-classroom.json`, which matches the file written by `App\Services\GitHub\GitHubAppClient::triggerPagesDeployment()`.
+
+## Most likely cause
+
+The provisioning flow appears to have a race condition between template generation and the first write to the new repository:
+
+1. `App\Jobs\ProvisionClassroomGroup` creates the team and repository.
+2. `App\Services\GitHub\GitHubAppClient::ensureRepository()` calls GitHub's template generation endpoint to create the repository from the configured template.
+3. The same job immediately calls `triggerPagesDeployment()`.
+4. `triggerPagesDeployment()` checks only for `.capstone-classroom.json`. If the file is missing, it creates it right away on the repository's default branch.
+
+If GitHub has created the repository record but has not finished copying the template contents yet, Capstone Classroom can initialize the repository first by committing `.capstone-classroom.json`. That explains the observed symptom: the repository exists, but the only file present is the hidden Capstone Classroom marker file.
+
+## Supporting evidence in the code
+
+- `app/Jobs/ProvisionClassroomGroup.php`
+  - Calls `ensureRepository()`
+  - Immediately grants permissions, adds members, and calls `triggerPagesDeployment()`
+- `app/Services/GitHub/GitHubAppClient.php`
+  - `ensureRepository()` uses `POST /repos/{template_owner}/{template_repository}/generate`
+  - `triggerPagesDeployment()` writes `.capstone-classroom.json` whenever that file is absent
+  - There is no wait, retry, or verification that the template contents have finished materializing before the write occurs
+
+## Why the current retry flow does not prevent it
+
+Once `.capstone-classroom.json` exists, later retries will not restore the missing template contents because `triggerPagesDeployment()` treats that file as the only readiness signal it needs. The group can also be marked `ready` before GitHub Pages setup has confirmed the generated repository is complete.
+
+## Additional contributing factors
+
+- `App\Jobs\ConfigureGitHubPages` polls for `gh-pages`, which is a downstream artifact of the template's documentation build, not proof that the template contents were copied successfully.
+- That polling currently retries every 30 seconds for 20 attempts, so the workflow eventually times out without distinguishing between "template copy still pending" and "template copy never completed."
+- There is no GitHub webhook or other completion signal to tell the app when template generation has actually finished, so the current design depends entirely on blind polling.
+
+## Resolution plan
+
+1. **Add a repository readiness check before the first write**
+   - After template generation, poll GitHub for a template-specific readiness signal before calling `triggerPagesDeployment()`.
+   - Prefer checking for a known file or directory that must come from the template, such as `package.json`, `docusaurus.config.js`, or another stable template artifact.
+   - Keep the repository in `provisioning` until that readiness check passes.
+
+2. **Separate repository creation from repository initialization**
+   - Leave `ensureRepository()` responsible only for creating or finding the repository.
+   - Move marker-file creation and GitHub Pages bootstrapping into a follow-up job that runs only after the template contents are confirmed present.
+
+3. **Treat template generation as eventually consistent**
+   - Add bounded retries with clear failure messages when the repository exists but template files do not appear in time.
+   - Record the exact failure reason in `provisioning_error` so the UI distinguishes "GitHub still copying template contents" from permanent failures like permission or API errors.
+
+4. **Add observability around each provisioning step**
+   - Log the repository id, default branch, template readiness checks, and whether `.capstone-classroom.json` already existed.
+   - Capture the response from the template generation request and any follow-up content checks to make future incidents diagnosable.
+
+5. **Preserve student-to-GitHub linkage during manual recovery**
+   - Before deleting a failed repository or team, keep the existing `RosterEntry` and `claimed_by_user_id` association intact.
+   - Add or document an instructor recovery path that retries provisioning for the same `ClassroomGroup` instead of recreating the roster relationship from scratch.
+
+6. **Add regression coverage when the fix is implemented**
+   - Add tests that simulate:
+     - template repository creation succeeding before template contents are ready
+     - marker-file creation being deferred until template content is visible
+     - retries preserving the original claimed student mappings
+
+## Recommended implementation order
+
+1. Add a template-readiness probe in `GitHubAppClient`
+2. Introduce a follow-up job for post-template initialization
+3. Update provisioning status/error handling
+4. Add regression tests for the delayed-template scenario
+5. Add a documented instructor recovery workflow that does not require deleting the original group
