@@ -23,11 +23,21 @@ class InitializeGitHubRepository implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 60;
 
-    public function __construct(public int $classroomGroupId) {}
+    public function __construct(public int $classroomGroupId, public ?string $expectedRepositoryId = null) {}
 
     public function handle(GitHubAppClient $github): void
     {
         $group = ClassroomGroup::query()->with('classroom')->findOrFail($this->classroomGroupId);
+
+        if ($group->github_repository_missing_at !== null) {
+            return;
+        }
+
+        if ($this->expectedRepositoryId !== null && $group->github_repository_id !== $this->expectedRepositoryId) {
+            return;
+        }
+
+        $repositoryId = $group->github_repository_id;
 
         try {
             if (! $github->hasRepositoryTemplateContents($group)) {
@@ -54,12 +64,21 @@ class InitializeGitHubRepository implements ShouldBeUnique, ShouldQueue
             throw $exception;
         }
 
-        $group->update([
-            'status' => GroupStatus::Ready,
-            'provisioning_error' => null,
-        ]);
+        $updated = ClassroomGroup::query()
+            ->whereKey($group->id)
+            ->where('github_repository_id', $repositoryId)
+            ->whereNull('github_repository_missing_at')
+            ->where('status', GroupStatus::Provisioning)
+            ->update([
+                'status' => GroupStatus::Ready,
+                'provisioning_error' => null,
+            ]);
 
-        ConfigureGitHubPages::dispatch($group->id)->delay(now()->addSeconds(30));
+        if ($updated === 0) {
+            return;
+        }
+
+        ConfigureGitHubPages::dispatch($group->id, $repositoryId)->delay(now()->addSeconds(30));
     }
 
     public function uniqueId(): string
@@ -79,7 +98,16 @@ class InitializeGitHubRepository implements ShouldBeUnique, ShouldQueue
             ? ($group->provisioning_error ?? 'GitHub repository template contents did not become available in time.')
             : ($exception?->getMessage() ?? 'GitHub repository initialization failed.');
 
-        $group->update([
+        $query = ClassroomGroup::query()
+            ->whereKey($group->id)
+            ->whereNull('github_repository_missing_at')
+            ->where('status', GroupStatus::Provisioning);
+
+        if ($this->expectedRepositoryId !== null) {
+            $query->where('github_repository_id', $this->expectedRepositoryId);
+        }
+
+        $query->update([
             'status' => GroupStatus::Failed,
             'provisioning_error' => $message,
         ]);

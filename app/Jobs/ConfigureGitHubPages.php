@@ -18,11 +18,21 @@ class ConfigureGitHubPages implements ShouldBeUnique, ShouldQueue
 
     public int $timeout = 60;
 
-    public function __construct(public int $classroomGroupId) {}
+    public function __construct(public int $classroomGroupId, public ?string $expectedRepositoryId = null) {}
 
     public function handle(GitHubAppClient $github): void
     {
         $group = ClassroomGroup::query()->with('classroom')->findOrFail($this->classroomGroupId);
+
+        if ($group->github_repository_missing_at !== null) {
+            return;
+        }
+
+        if ($this->expectedRepositoryId !== null && $group->github_repository_id !== $this->expectedRepositoryId) {
+            return;
+        }
+
+        $repositoryId = $group->github_repository_id;
 
         if (! $github->hasPagesBranch($group)) {
             $this->release(30);
@@ -30,10 +40,16 @@ class ConfigureGitHubPages implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $group->update([
-            'github_pages_url' => $github->configurePages($group),
-            'provisioning_error' => null,
-        ]);
+        $pagesUrl = $github->configurePages($group);
+
+        ClassroomGroup::query()
+            ->whereKey($group->id)
+            ->where('github_repository_id', $repositoryId)
+            ->whereNull('github_repository_missing_at')
+            ->update([
+                'github_pages_url' => $pagesUrl,
+                'provisioning_error' => null,
+            ]);
     }
 
     public function uniqueId(): string
@@ -43,7 +59,16 @@ class ConfigureGitHubPages implements ShouldBeUnique, ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        ClassroomGroup::query()->whereKey($this->classroomGroupId)->update([
+        $query = ClassroomGroup::query()
+            ->whereKey($this->classroomGroupId)
+            ->whereNull('github_repository_missing_at')
+            ->whereNot('status', GroupStatus::Missing);
+
+        if ($this->expectedRepositoryId !== null) {
+            $query->where('github_repository_id', $this->expectedRepositoryId);
+        }
+
+        $query->update([
             'status' => GroupStatus::Failed,
             'provisioning_error' => $exception?->getMessage() ?? 'GitHub Pages configuration failed.',
         ]);

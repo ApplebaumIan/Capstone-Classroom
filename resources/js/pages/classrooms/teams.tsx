@@ -1,12 +1,12 @@
 import { Form, Head, usePage, usePoll } from '@inertiajs/react';
 import {
+    AlertTriangle,
     CheckCircle2,
     ExternalLink,
     Plus,
     RefreshCw,
     Settings2,
 } from 'lucide-react';
-import { useEffect } from 'react';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -23,16 +23,31 @@ import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes';
 import { update as updateTeamCreation } from '@/routes/classroom-team-creation';
 import { store as createClassroomGroup } from '@/routes/classroom-groups';
+import { store as acceptGitHubSyncIssue } from '@/routes/github-sync-issue-acceptances';
+import { store as resynchronizeGitHubSyncIssue } from '@/routes/github-sync-issue-resynchronizations';
 import { store as retryProvisioning } from '@/routes/group-provisioning';
+
+type SyncIssue = {
+    id: number;
+    type: 'membership_added' | 'membership_removed';
+    github_login: string | null;
+    can_accept: boolean;
+    error: string | null;
+};
 
 type Group = {
     id: number;
     name: string;
-    status: 'waiting' | 'provisioning' | 'ready' | 'failed';
+    status: 'waiting' | 'provisioning' | 'ready' | 'failed' | 'missing';
     error: string | null;
+    team_name: string | null;
     team_url: string | null;
+    team_missing: boolean;
+    team_repository_access: boolean | null;
     repository_url: string | null;
+    repository_missing: boolean;
     pages_url: string | null;
+    sync_issues: SyncIssue[];
     is_testing: boolean;
     students: Array<{
         id: number;
@@ -48,6 +63,7 @@ type Props = {
         name: string;
         organization: string | null;
         installed: boolean;
+        installation_status: 'active' | 'suspended' | 'deleted' | null;
         student_team_creation_enabled: boolean;
         groups: Group[];
     };
@@ -59,12 +75,13 @@ function StatusBadge({ status }: { status: Group['status'] }) {
         provisioning: 'Provisioning',
         ready: 'Ready',
         failed: 'Needs attention',
+        missing: 'Missing on GitHub',
     };
 
     return (
         <Badge
             variant={
-                status === 'failed'
+                status === 'failed' || status === 'missing'
                     ? 'destructive'
                     : status === 'ready'
                       ? 'default'
@@ -81,22 +98,9 @@ function StatusBadge({ status }: { status: Group['status'] }) {
 }
 
 export default function Teams({ classroom }: Props) {
-    const { flash } = usePage().props;
-    const shouldPoll = classroom.groups.some(
-        (group) => group.status === 'provisioning',
-    );
+    const { errors, flash } = usePage().props;
 
-    const { stop } = usePoll(
-        10_000,
-        { only: ['classroom'] },
-        { autoStart: shouldPoll },
-    );
-
-    useEffect(() => {
-        if (!shouldPoll) {
-            stop();
-        }
-    }, [shouldPoll, stop]);
+    usePoll(10_000, { only: ['classroom'] });
 
     return (
         <>
@@ -119,6 +123,28 @@ export default function Teams({ classroom }: Props) {
                         <CheckCircle2 />
                         <AlertTitle>Complete</AlertTitle>
                         <AlertDescription>{flash.success}</AlertDescription>
+                    </Alert>
+                )}
+
+                {errors.github_sync && (
+                    <Alert variant="destructive">
+                        <AlertTriangle />
+                        <AlertTitle>Unable to apply GitHub change</AlertTitle>
+                        <AlertDescription>
+                            {errors.github_sync}
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                {!classroom.installed && (
+                    <Alert variant="destructive">
+                        <AlertTriangle />
+                        <AlertTitle>GitHub App is not active</AlertTitle>
+                        <AlertDescription>
+                            {classroom.installation_status === 'suspended'
+                                ? 'The organization suspended this GitHub App installation. Unsuspend it on GitHub before making changes.'
+                                : 'The GitHub App installation is missing or was removed. Reconnect it before making changes.'}
+                        </AlertDescription>
                     </Alert>
                 )}
 
@@ -158,7 +184,11 @@ export default function Teams({ classroom }: Props) {
                                         />
                                         <InputError message={errors.name} />
                                     </div>
-                                    <Button disabled={processing}>
+                                    <Button
+                                        disabled={
+                                            processing || !classroom.installed
+                                        }
+                                    >
                                         <Plus /> Create team
                                     </Button>
                                 </>
@@ -178,7 +208,9 @@ export default function Teams({ classroom }: Props) {
                                     />
                                     <Button
                                         variant="outline"
-                                        disabled={processing}
+                                        disabled={
+                                            processing || !classroom.installed
+                                        }
                                     >
                                         <Settings2 />
                                         {classroom.student_team_creation_enabled
@@ -232,6 +264,53 @@ export default function Teams({ classroom }: Props) {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="grid gap-5">
+                                    {(group.repository_missing ||
+                                        group.team_missing ||
+                                        group.team_repository_access ===
+                                            false) && (
+                                        <Alert variant="destructive">
+                                            <AlertTriangle />
+                                            <AlertTitle>
+                                                {group.repository_missing
+                                                    ? 'Repository deleted on GitHub'
+                                                    : group.team_missing
+                                                      ? 'GitHub team deleted'
+                                                      : 'Repository access removed'}
+                                            </AlertTitle>
+                                            <AlertDescription>
+                                                <p>
+                                                    {group.repository_missing
+                                                        ? 'The classroom record and team are intact. Recreate the repository when ready.'
+                                                        : group.team_missing
+                                                          ? 'The classroom record, repository, and roster are intact. Recreate the team when ready.'
+                                                          : 'The GitHub team no longer has access to its repository.'}
+                                                </p>
+                                                <Form
+                                                    {...retryProvisioning.form([
+                                                        classroom.id,
+                                                        group.id,
+                                                    ])}
+                                                >
+                                                    {({ processing }) => (
+                                                        <Button
+                                                            size="sm"
+                                                            disabled={
+                                                                processing ||
+                                                                !classroom.installed
+                                                            }
+                                                        >
+                                                            <RefreshCw />
+                                                            {group.repository_missing
+                                                                ? 'Recreate repository'
+                                                                : group.team_missing
+                                                                  ? 'Recreate team'
+                                                                  : 'Restore access'}
+                                                        </Button>
+                                                    )}
+                                                </Form>
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                     <div className="flex flex-wrap gap-2">
                                         {group.team_url && (
                                             <a
@@ -282,7 +361,10 @@ export default function Teams({ classroom }: Props) {
                                                 {({ processing }) => (
                                                     <Button
                                                         size="sm"
-                                                        disabled={processing}
+                                                        disabled={
+                                                            processing ||
+                                                            !classroom.installed
+                                                        }
                                                     >
                                                         <RefreshCw /> Retry
                                                     </Button>
@@ -290,11 +372,106 @@ export default function Teams({ classroom }: Props) {
                                             </Form>
                                         )}
                                     </div>
+                                    {group.team_name &&
+                                        group.team_name !== group.name && (
+                                            <p className="text-muted-foreground text-sm">
+                                                GitHub team name:{' '}
+                                                <span className="text-foreground font-medium">
+                                                    {group.team_name}
+                                                </span>
+                                            </p>
+                                        )}
                                     {group.error && (
                                         <p className="text-destructive text-sm">
                                             {group.error}
                                         </p>
                                     )}
+                                    {group.sync_issues.map((issue) => (
+                                        <Alert key={issue.id}>
+                                            <AlertTriangle />
+                                            <AlertTitle>
+                                                GitHub membership changed
+                                            </AlertTitle>
+                                            <AlertDescription>
+                                                <p>
+                                                    @
+                                                    {issue.github_login ??
+                                                        'unknown'}{' '}
+                                                    was{' '}
+                                                    {issue.type ===
+                                                    'membership_added'
+                                                        ? 'added to'
+                                                        : 'removed from'}{' '}
+                                                    this team directly on
+                                                    GitHub.
+                                                </p>
+                                                {issue.type ===
+                                                    'membership_removed' && (
+                                                    <p>
+                                                        Accepting moves the
+                                                        student to the
+                                                        pending-student list.
+                                                    </p>
+                                                )}
+                                                {issue.error && (
+                                                    <p className="text-destructive">
+                                                        Last resync failed:{' '}
+                                                        {issue.error}
+                                                    </p>
+                                                )}
+                                                <div className="flex flex-wrap gap-2 pt-1">
+                                                    {issue.can_accept && (
+                                                        <Form
+                                                            {...acceptGitHubSyncIssue.form(
+                                                                [
+                                                                    classroom.id,
+                                                                    group.id,
+                                                                    issue.id,
+                                                                ],
+                                                            )}
+                                                        >
+                                                            {({
+                                                                processing,
+                                                            }) => (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    disabled={
+                                                                        processing ||
+                                                                        !classroom.installed
+                                                                    }
+                                                                >
+                                                                    Accept
+                                                                </Button>
+                                                            )}
+                                                        </Form>
+                                                    )}
+                                                    <Form
+                                                        {...resynchronizeGitHubSyncIssue.form(
+                                                            [
+                                                                classroom.id,
+                                                                group.id,
+                                                                issue.id,
+                                                            ],
+                                                        )}
+                                                    >
+                                                        {({ processing }) => (
+                                                            <Button
+                                                                size="sm"
+                                                                disabled={
+                                                                    processing ||
+                                                                    !classroom.installed
+                                                                }
+                                                            >
+                                                                <RefreshCw />{' '}
+                                                                Resync GitHub
+                                                            </Button>
+                                                        )}
+                                                    </Form>
+                                                </div>
+                                            </AlertDescription>
+                                        </Alert>
+                                    ))}
                                     <div className="divide-y rounded-lg border">
                                         {group.students.map((student) => (
                                             <div

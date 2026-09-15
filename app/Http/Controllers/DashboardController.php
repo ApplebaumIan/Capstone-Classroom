@@ -33,7 +33,7 @@ class DashboardController extends Controller
                     'id' => $classroom->id,
                     'name' => $classroom->name,
                     'organization' => $classroom->github_organization_login,
-                    'installed' => $classroom->github_installation_id !== null,
+                    'installed' => $classroom->hasActiveGitHubInstallation(),
                     'student_count' => $classroom->student_count,
                     'claimed_count' => $classroom->claimed_students_count,
                     'team_count' => $classroom->groups_count,

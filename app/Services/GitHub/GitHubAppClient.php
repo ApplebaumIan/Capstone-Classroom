@@ -2,6 +2,7 @@
 
 namespace App\Services\GitHub;
 
+use App\GitHubInstallationStatus;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
 use Illuminate\Http\Client\PendingRequest;
@@ -24,6 +25,20 @@ class GitHubAppClient
             $installations,
             static fn (array $installation): bool => ($installation['target_type'] ?? null) === 'Organization',
         ));
+    }
+
+    public function installationStatus(string $installationId): GitHubInstallationStatus
+    {
+        $response = $this->request($this->appJwt())
+            ->get('/app/installations/'.$this->segment($installationId));
+
+        if ($response->notFound()) {
+            return GitHubInstallationStatus::Deleted;
+        }
+
+        return $response->throw()->json('suspended_at') === null
+            ? GitHubInstallationStatus::Active
+            : GitHubInstallationStatus::Suspended;
     }
 
     /** @return array<string, mixed> */
@@ -140,6 +155,18 @@ class GitHubAppClient
         }
     }
 
+    public function teamHasMember(ClassroomGroup $group, string $githubLogin): bool
+    {
+        $response = $this->installationRequest($group->classroom)
+            ->get('/orgs/'.$this->segment($group->classroom->github_organization_login).'/teams/'.$this->segment($group->github_team_slug).'/memberships/'.$this->segment($githubLogin));
+
+        if ($response->notFound()) {
+            return false;
+        }
+
+        return $response->throw()->successful();
+    }
+
     public function triggerPagesDeployment(ClassroomGroup $group): void
     {
         $classroom = $group->classroom;
@@ -227,8 +254,8 @@ class GitHubAppClient
 
     private function installationRequest(Classroom $classroom): PendingRequest
     {
-        if ($classroom->github_installation_id === null) {
-            throw new RuntimeException('The classroom does not have a GitHub App installation.');
+        if (! $classroom->hasActiveGitHubInstallation()) {
+            throw new RuntimeException('The classroom GitHub App installation is not active.');
         }
 
         $token = Cache::remember(

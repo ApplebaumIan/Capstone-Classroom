@@ -25,7 +25,7 @@ class ClassroomStudentController extends Controller
                 'name' => $classroom->name,
                 'organization' => $classroom->github_organization_login,
                 'join_url' => route('classrooms.join', $classroom->join_code),
-                'installed' => $classroom->github_installation_id !== null,
+                'installed' => $classroom->hasActiveGitHubInstallation(),
                 'roster_imported' => $classroom->roster_imported_at !== null,
                 'roster_skipped' => $classroom->roster_skipped_at !== null,
                 'repository_visibility' => $classroom->repository_visibility->value,

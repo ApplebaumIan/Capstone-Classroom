@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\GitHubInstallationStatus;
 use App\Models\Classroom;
 use App\Models\User;
 use App\RepositoryVisibility;
@@ -34,6 +35,7 @@ class ClassroomFactory extends Factory
             'github_organization_id' => (string) fake()->unique()->randomNumber(8),
             'github_organization_login' => fake()->unique()->userName(),
             'github_installation_id' => (string) fake()->unique()->randomNumber(8),
+            'github_installation_status' => GitHubInstallationStatus::Active,
         ]);
     }
 }

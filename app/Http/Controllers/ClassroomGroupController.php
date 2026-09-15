@@ -12,7 +12,7 @@ class ClassroomGroupController extends Controller
     public function store(Request $request, Classroom $classroom, CreateClassroomGroup $createClassroomGroup): RedirectResponse
     {
         abort_unless($classroom->teacher_id === $request->user()->id, 404);
-        abort_if($classroom->github_installation_id === null, 409, 'Install the GitHub App before creating teams.');
+        abort_unless($classroom->hasActiveGitHubInstallation(), 409, 'Install the GitHub App before creating teams.');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],

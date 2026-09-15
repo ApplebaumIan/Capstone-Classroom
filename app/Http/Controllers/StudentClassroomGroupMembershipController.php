@@ -16,7 +16,7 @@ class StudentClassroomGroupMembershipController extends Controller
         ClassroomGroup $classroomGroup,
         JoinClassroomGroup $joinClassroomGroup,
     ): RedirectResponse {
-        abort_if($classroom->github_installation_id === null, 409, 'The classroom GitHub App is not installed.');
+        abort_unless($classroom->hasActiveGitHubInstallation(), 409, 'The classroom GitHub App is not active.');
         abort_unless($classroom->pendingStudents()->whereKey($request->user()->id)->exists(), 403);
 
         $joinClassroomGroup->handle($request->user(), $classroom, $classroomGroup);

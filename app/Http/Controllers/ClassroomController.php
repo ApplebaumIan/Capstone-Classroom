@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\GitHubInstallationStatus;
 use App\Models\Classroom;
 use App\RepositoryVisibility;
 use App\Services\GitHub\GitHubAppClient;
@@ -40,6 +41,7 @@ class ClassroomController extends Controller
                 'join_code' => Str::lower(Str::random(32)),
                 'repository_visibility' => RepositoryVisibility::Private,
                 'github_installation_id' => (string) $installation['id'],
+                'github_installation_status' => GitHubInstallationStatus::Active,
                 'github_organization_id' => (string) $installation['account']['id'],
                 'github_organization_login' => $installation['account']['login'],
             ]);
@@ -81,6 +83,7 @@ class ClassroomController extends Controller
             $classroom->update([
                 'name' => $validated['name'],
                 'github_installation_id' => (string) $installation['id'],
+                'github_installation_status' => GitHubInstallationStatus::Active,
                 'github_organization_id' => (string) $installation['account']['id'],
                 'github_organization_login' => $installation['account']['login'],
             ]);

@@ -48,6 +48,7 @@ test('provisioning creates resources grants access and adds claimed students', f
     $github = mock(GitHubAppClient::class);
     $github->shouldReceive('ensureTeam')->once()->andReturn([
         'id' => 100,
+        'name' => 'Vulnhunter',
         'slug' => 'vulnhunter',
         'html_url' => 'https://github.com/orgs/temple/teams/vulnhunter',
     ]);
@@ -118,6 +119,46 @@ test('client grants team members admin privileges on their repository', function
         && $request->url() === 'https://api.github.com/orgs/temple/teams/vulnhunter/repos/temple/vulnhunter-repository'
         && $request->hasHeader('Authorization', 'Bearer installation-token')
         && $request->data() === ['permission' => 'admin']);
+});
+
+test('client checks current github team membership', function () {
+    $classroom = Classroom::factory()->installed()->create([
+        'github_organization_login' => 'temple',
+        'github_installation_id' => '12345',
+    ]);
+    $group = ClassroomGroup::factory()->for($classroom)->create([
+        'github_team_slug' => 'vulnhunter',
+    ]);
+    Cache::put('github-installation-token-12345', 'installation-token');
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.github.com/orgs/temple/teams/vulnhunter/memberships/octocat' => Http::sequence()
+            ->push(['state' => 'active'])
+            ->push(status: 404),
+    ]);
+    $github = new GitHubAppClient;
+
+    expect($github->teamHasMember($group, 'octocat'))->toBeTrue()
+        ->and($github->teamHasMember($group, 'octocat'))->toBeFalse();
+});
+
+test('stale provisioning does not recreate resources marked missing by webhook', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $group = ClassroomGroup::factory()->for($classroom)->create([
+        'status' => GroupStatus::Missing,
+        'github_team_missing_at' => now(),
+        'github_repository_missing_at' => now(),
+    ]);
+    $github = mock(GitHubAppClient::class);
+    $github->shouldNotReceive('ensureTeam');
+    $github->shouldNotReceive('ensureRepository');
+    $github->shouldNotReceive('grantTeamRepository');
+
+    (new ProvisionClassroomGroup($group->id))->handle($github);
+
+    expect($group->fresh()->status)->toBe(GroupStatus::Missing)
+        ->and($group->fresh()->github_team_id)->toBeNull()
+        ->and($group->fresh()->github_repository_id)->toBeNull();
 });
 
 test('client reports repository ready when template workflow exists', function () {

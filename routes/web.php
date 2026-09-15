@@ -9,6 +9,9 @@ use App\Http\Controllers\ClassroomTeamController;
 use App\Http\Controllers\ClassroomTeamCreationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GitHubInstallationController;
+use App\Http\Controllers\GitHubSyncIssueAcceptanceController;
+use App\Http\Controllers\GitHubSyncIssueResynchronizationController;
+use App\Http\Controllers\GitHubWebhookController;
 use App\Http\Controllers\GroupProvisioningController;
 use App\Http\Controllers\PendingClassroomStudentController;
 use App\Http\Controllers\PendingRosterClaimController;
@@ -18,9 +21,13 @@ use App\Http\Controllers\RosterController;
 use App\Http\Controllers\RosterImportSkipController;
 use App\Http\Controllers\StudentClassroomGroupController;
 use App\Http\Controllers\StudentClassroomGroupMembershipController;
+use App\Http\Middleware\VerifyGitHubWebhookSignature;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+Route::post('webhooks/github', GitHubWebhookController::class)
+    ->middleware(VerifyGitHubWebhookSignature::class)
+    ->name('github.webhooks.store');
 Route::inertia('/login', 'auth/login', [
     'localAuthEnabled' => fn (): bool => app()->environment('local'),
 ])->middleware('guest')->name('login');
@@ -53,6 +60,8 @@ Route::middleware('auth')->group(function () {
     Route::post('classrooms/{classroom}/pending-students/{pendingStudent}/roster-claim', PendingRosterClaimController::class)->name('pending-roster-claims.store');
     Route::delete('classrooms/{classroom}/roster-claims/{rosterEntry}', RosterClaimResetController::class)->name('roster-claims.destroy');
     Route::post('classrooms/{classroom}/groups/{classroomGroup}/provisioning', GroupProvisioningController::class)->name('group-provisioning.store');
+    Route::post('classrooms/{classroom}/groups/{classroomGroup}/github-sync-issues/{githubSyncIssue}/acceptance', GitHubSyncIssueAcceptanceController::class)->name('github-sync-issue-acceptances.store');
+    Route::post('classrooms/{classroom}/groups/{classroomGroup}/github-sync-issues/{githubSyncIssue}/resynchronization', GitHubSyncIssueResynchronizationController::class)->name('github-sync-issue-resynchronizations.store');
 });
 
 Route::get('/auth/github', [GitHubAuthenticationController::class, 'redirect'])
