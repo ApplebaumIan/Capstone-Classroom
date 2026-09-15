@@ -1,0 +1,41 @@
+---
+sidebar_position: 4
+title: Common questions
+description: Quick answers for common Capstone Classroom onboarding issues.
+---
+
+# Common questions
+
+## I cannot install the GitHub App
+
+Use a GitHub account that can install apps for the organization. If the organization restricts app installation, ask an organization owner to approve it. Complete the installation with the same account used to sign in to Capstone Classroom.
+
+## My organization is not listed
+
+Confirm that the Capstone Classroom GitHub App is installed for that organization and that your signed-in account can access the installation. Return to **Create Class** and choose the organization again.
+
+## The roster CSV is rejected
+
+Export the Canvas group roster again without renaming or reordering columns. The header must be exactly:
+
+```text
+name,canvas_user_id,user_id,login_id,sections,group_name,canvas_group_id,group_id
+```
+
+Each student must occur only once. Required cells cannot be blank.
+
+## A student cannot find their name
+
+The student should select **Skip for now**. Their GitHub account then appears under **Unlinked students** on the teacher’s **Student Roster** page, where the teacher can match it to an unclaimed Canvas name.
+
+## A student claimed the wrong name
+
+On **Student Roster**, find the linked entry and select **Reset**. The student can then reopen the classroom join link and choose the correct name.
+
+## A team is stuck on Provisioning
+
+The page checks status automatically. Wait briefly and accept any pending GitHub organization invitation. If the team changes to **Needs attention**, open **Teams**, correct the issue described in the error, and select **Retry**.
+
+## A repository or project site link is missing
+
+The repository appears after GitHub provisioning succeeds. The project site can take longer because GitHub Pages must finish its first deployment. Keep the page open or return later; its status refreshes automatically.
