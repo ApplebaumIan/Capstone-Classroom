@@ -5,6 +5,7 @@ use App\Jobs\ProvisionClassroomGroup;
 use App\Jobs\RemoveStudentFromGitHubTeam;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
+use App\Models\GitHubSyncIssue;
 use App\Models\RosterEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GithubProvider;
 
 uses(RefreshDatabase::class);
 
@@ -283,7 +286,10 @@ test('teacher sees pending github students and available roster entries', functi
     $classroom = Classroom::factory()->installed()->create();
     $group = ClassroomGroup::factory()->for($classroom)->create();
     $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create(['name' => 'Canvas Student']);
-    $student = User::factory()->create(['github_login' => 'octocat']);
+    $student = User::factory()->create([
+        'github_login' => 'octocat',
+        'avatar_url' => 'https://avatars.example.com/octocat',
+    ]);
     $classroom->pendingStudents()->attach($student);
 
     $response = $this->actingAs($classroom->teacher)->get(route('classrooms.students', $classroom));
@@ -291,6 +297,7 @@ test('teacher sees pending github students and available roster entries', functi
     $response->assertInertia(fn (Assert $page) => $page
         ->component('classrooms/students')
         ->where('classroom.pending_students.0.github_login', 'octocat')
+        ->where('classroom.pending_students.0.avatar_url', 'https://avatars.example.com/octocat')
         ->where('classroom.unclaimed_entries.0.id', $entry->id)
         ->where('classroom.unclaimed_entries.0.group', $group->name));
 });
@@ -453,6 +460,59 @@ test('teacher classroom pages are private to their owner', function () {
     $this->put(route('classrooms.update', $classroom), [])->assertNotFound();
 });
 
+test('teacher deletes classroom data after confirming its exact name', function () {
+    $classroom = Classroom::factory()->installed()->create(['name' => 'CIS 4398 Fall']);
+    $group = ClassroomGroup::factory()->for($classroom)->create();
+    $student = User::factory()->create();
+    RosterEntry::factory()->for($classroom)->for($group, 'group')->create([
+        'claimed_by_user_id' => $student->id,
+    ]);
+    $classroom->pendingStudents()->attach(User::factory()->create());
+    GitHubSyncIssue::factory()->for($group, 'classroomGroup')->create();
+
+    $this->actingAs($classroom->teacher)
+        ->delete(route('classrooms.destroy', $classroom), [
+            'confirmation' => 'CIS 4398 Fall',
+        ])
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas('success', 'Classroom deleted. GitHub repositories and teams were preserved.');
+
+    $this->assertDatabaseMissing('classrooms', ['id' => $classroom->id]);
+    $this->assertDatabaseMissing('classroom_groups', ['id' => $group->id]);
+    $this->assertDatabaseMissing('roster_entries', ['classroom_id' => $classroom->id]);
+    $this->assertDatabaseMissing('pending_classroom_students', ['classroom_id' => $classroom->id]);
+    $this->assertDatabaseMissing('github_sync_issues', ['classroom_group_id' => $group->id]);
+    $this->assertDatabaseHas('users', ['id' => $student->id]);
+});
+
+test('teacher must confirm exact classroom name before deletion', function () {
+    $classroom = Classroom::factory()->create(['name' => 'CIS 4398 Fall']);
+
+    $this->actingAs($classroom->teacher)
+        ->from(route('dashboard'))
+        ->delete(route('classrooms.destroy', $classroom), [
+            'confirmation' => 'cis 4398 fall',
+        ])
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHasErrors([
+            'confirmation' => 'Enter the classroom name exactly to confirm deletion.',
+        ]);
+
+    $this->assertDatabaseHas('classrooms', ['id' => $classroom->id]);
+});
+
+test('another teacher cannot delete classroom', function () {
+    $classroom = Classroom::factory()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->delete(route('classrooms.destroy', $classroom), [
+            'confirmation' => $classroom->name,
+        ])
+        ->assertNotFound();
+
+    $this->assertDatabaseHas('classrooms', ['id' => $classroom->id]);
+});
+
 test('classroom owner sees teacher testing mode instead of canvas identities', function () {
     $classroom = Classroom::factory()->installed()->create();
     $group = ClassroomGroup::factory()->for($classroom)->create();
@@ -491,7 +551,8 @@ test('classroom owner creates a testing team without becoming an unlinked studen
     $this->get(route('classrooms.teams', $classroom))
         ->assertInertia(fn (Assert $page) => $page
             ->where('classroom.groups.0.is_testing', true)
-            ->where('classroom.groups.0.students.0.id', $entry->id));
+            ->where('classroom.groups.0.students.0.id', $entry->id)
+            ->where('classroom.groups.0.students.0.avatar_url', $teacher->avatar_url));
     $this->delete(route('roster-claims.destroy', [$classroom, $entry]))->assertNotFound();
 
     $roster = UploadedFile::fake()->createWithContent('roster.csv', rosterCsv());
@@ -630,4 +691,87 @@ test('teacher cannot connect a spoofed GitHub installation', function () {
         'installation_id' => 'That GitHub App installation is not available to your account.',
     ]);
     expect($teacher->classrooms()->exists())->toBeFalse();
+});
+
+test('teacher starts github organization setup with oauth', function () {
+    $teacher = User::factory()->create();
+    $provider = Mockery::mock(GithubProvider::class);
+    $provider->shouldReceive('redirectUrl')->once()->andReturnSelf();
+    $provider->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect()->away('https://github.com/login/oauth/authorize'));
+    Socialite::shouldReceive('driver')->once()->with('github')->andReturn($provider);
+
+    $response = $this->actingAs($teacher)->get(route('github.installations.create'));
+
+    $response->assertRedirect('https://github.com/login/oauth/authorize')
+        ->assertSessionHas('github.installation_pending', true);
+});
+
+test('teacher opens github app installation separately', function () {
+    config(['services.github.app_slug' => 'capstone-preview']);
+    $teacher = User::factory()->create();
+
+    $response = $this->actingAs($teacher)->get(route('github.installations.edit'));
+
+    $response->assertRedirect('https://github.com/apps/capstone-preview/installations/new');
+});
+
+test('teacher refreshes github organizations after installation', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.github.com/user/installations*' => Http::response([
+            'installations' => [[
+                'id' => 123,
+                'target_type' => 'Organization',
+                'account' => [
+                    'id' => 456,
+                    'login' => 'temple',
+                    'avatar_url' => 'https://avatars.example.com/temple',
+                ],
+            ]],
+        ]),
+    ]);
+    $classroom = Classroom::factory()->create([
+        'github_installation_id' => null,
+        'github_organization_id' => null,
+        'github_organization_login' => null,
+    ]);
+
+    $response = $this->actingAs($classroom->teacher)
+        ->withSession([
+            'github.installation_pending' => true,
+            'github.installation_classroom_id' => $classroom->id,
+            'github.user_access_token' => Crypt::encryptString('user-token'),
+        ])
+        ->post(route('github.installations.store'));
+
+    $response->assertRedirect(route('classrooms.edit', $classroom, absolute: false))
+        ->assertSessionHas('github.available_installations', [[
+            'id' => '123',
+            'account_id' => '456',
+            'login' => 'temple',
+            'avatar_url' => 'https://avatars.example.com/temple',
+        ]]);
+});
+
+test('teacher must reconnect github before refreshing organizations', function () {
+    $teacher = User::factory()->create();
+
+    $response = $this->actingAs($teacher)
+        ->post(route('github.installations.store'));
+
+    $response->assertSessionHasErrors([
+        'github' => 'Reconnect GitHub before refreshing organizations.',
+    ]);
+});
+
+test('student cannot start github organization setup', function () {
+    $classroom = Classroom::factory()->installed()->create();
+    $student = User::factory()->create();
+    $classroom->pendingStudents()->attach($student);
+
+    $this->actingAs($student)
+        ->get(route('github.installations.create'))
+        ->assertForbidden();
 });

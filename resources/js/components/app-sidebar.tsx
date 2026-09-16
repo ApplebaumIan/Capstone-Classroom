@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Plus, School, Users } from 'lucide-react';
+import { Book, LayoutGrid, Plus, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
+import GitHubAvatar from '@/components/github-avatar';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -76,7 +77,20 @@ export function AppSidebar() {
                                             }}
                                         >
                                             <Link href={classroomHref} prefetch>
-                                                <School />
+                                                <GitHubAvatar
+                                                    name={classroom.name}
+                                                    avatarUrl={
+                                                        classroom.organization
+                                                            ? `https://github.com/${encodeURIComponent(classroom.organization)}.png?size=80`
+                                                            : null
+                                                    }
+                                                    alt={
+                                                        classroom.organization
+                                                            ? `${classroom.organization} GitHub organization`
+                                                            : undefined
+                                                    }
+                                                    className="size-5 rounded-sm"
+                                                />
                                                 <span>{classroom.name}</span>
                                             </Link>
                                         </SidebarMenuButton>
@@ -145,6 +159,16 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <SidebarMenuButton
+                    asChild
+                    // isActive={isCurrentUrl(item.href)}
+                    tooltip={{ children: 'Documentation' }}
+                >
+                    <Link href={'/docusaurus'} prefetch>
+                        <Book />
+                        <span>Documentation</span>
+                    </Link>
+                </SidebarMenuButton>
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

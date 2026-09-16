@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\GitHubInstallationStatus;
 use App\Models\Classroom;
 use App\RepositoryVisibility;
 use App\Services\GitHub\GitHubAppClient;
@@ -40,6 +41,7 @@ class ClassroomController extends Controller
                 'join_code' => Str::lower(Str::random(32)),
                 'repository_visibility' => RepositoryVisibility::Private,
                 'github_installation_id' => (string) $installation['id'],
+                'github_installation_status' => GitHubInstallationStatus::Active,
                 'github_organization_id' => (string) $installation['account']['id'],
                 'github_organization_login' => $installation['account']['login'],
             ]);
@@ -81,6 +83,7 @@ class ClassroomController extends Controller
             $classroom->update([
                 'name' => $validated['name'],
                 'github_installation_id' => (string) $installation['id'],
+                'github_installation_status' => GitHubInstallationStatus::Active,
                 'github_organization_id' => (string) $installation['account']['id'],
                 'github_organization_login' => $installation['account']['login'],
             ]);
@@ -97,6 +100,24 @@ class ClassroomController extends Controller
         return to_route('classrooms.students', $classroom)->with('success', 'Classroom setup complete.');
     }
 
+    public function destroy(Request $request, Classroom $classroom): RedirectResponse
+    {
+        $this->authorizeOwner($request, $classroom);
+        $validated = $request->validate([
+            'confirmation' => ['required', 'string'],
+        ]);
+
+        if (! hash_equals($classroom->name, $validated['confirmation'])) {
+            throw ValidationException::withMessages([
+                'confirmation' => 'Enter the classroom name exactly to confirm deletion.',
+            ]);
+        }
+
+        $classroom->delete();
+
+        return to_route('dashboard')->with('success', 'Classroom deleted. GitHub repositories and teams were preserved.');
+    }
+
     private function formResponse(?Classroom $classroom = null): Response
     {
         return Inertia::render('classrooms/create', [
@@ -105,6 +126,7 @@ class ClassroomController extends Controller
                 'name' => $classroom->name,
             ],
             'available_installations' => session('github.available_installations', []),
+            'github_connected' => is_string(session('github.user_access_token')),
         ]);
     }
 

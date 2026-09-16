@@ -17,7 +17,7 @@ class LocalAuthenticationController extends Controller
         $githubId = match ($role) {
             'teacher' => 'local-teacher',
             'student' => 'local-student',
-            'pending-student' => 'sam-rivera',
+            'pending-student' => 'pending-student',
             default => abort(404),
         };
         $user = User::query()->where('github_id', $githubId)->first();

@@ -12,7 +12,7 @@ class RosterImportSkipController extends Controller
     {
         abort_unless($classroom->teacher_id === $request->user()->id, 404);
 
-        abort_if($classroom->github_installation_id === null, 409, 'Install the GitHub App before skipping roster import.');
+        abort_unless($classroom->hasActiveGitHubInstallation(), 409, 'Install the GitHub App before skipping roster import.');
 
         if ($classroom->roster_imported_at === null) {
             $classroom->update(['roster_skipped_at' => now()]);

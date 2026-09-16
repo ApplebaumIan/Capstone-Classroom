@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\GitHubInstallationStatus;
 use App\RepositoryVisibility;
 use Database\Factories\ClassroomFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $github_organization_id
  * @property string|null $github_organization_login
  * @property string|null $github_installation_id
+ * @property GitHubInstallationStatus|null $github_installation_status
  * @property Carbon|null $roster_imported_at
  * @property Carbon|null $roster_skipped_at
  * @property bool $student_team_creation_enabled
@@ -33,7 +35,7 @@ use Illuminate\Support\Carbon;
  * @property-read Collection<int, RosterEntry> $rosterEntries
  * @property-read Collection<int, User> $pendingStudents
  */
-#[Fillable(['teacher_id', 'name', 'join_code', 'repository_visibility', 'github_organization_id', 'github_organization_login', 'github_installation_id', 'roster_imported_at', 'roster_skipped_at', 'student_team_creation_enabled'])]
+#[Fillable(['teacher_id', 'name', 'join_code', 'repository_visibility', 'github_organization_id', 'github_organization_login', 'github_installation_id', 'github_installation_status', 'roster_imported_at', 'roster_skipped_at', 'student_team_creation_enabled'])]
 class Classroom extends Model
 {
     /** @use HasFactory<ClassroomFactory> */
@@ -63,10 +65,17 @@ class Classroom extends Model
         return $this->belongsToMany(User::class, 'pending_classroom_students')->withTimestamps();
     }
 
+    public function hasActiveGitHubInstallation(): bool
+    {
+        return $this->github_installation_id !== null
+            && ! in_array($this->github_installation_status, [GitHubInstallationStatus::Suspended, GitHubInstallationStatus::Deleted], true);
+    }
+
     protected function casts(): array
     {
         return [
             'repository_visibility' => RepositoryVisibility::class,
+            'github_installation_status' => GitHubInstallationStatus::class,
             'roster_imported_at' => 'datetime',
             'roster_skipped_at' => 'datetime',
             'student_team_creation_enabled' => 'boolean',

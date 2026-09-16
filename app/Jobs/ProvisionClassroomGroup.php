@@ -2,8 +2,11 @@
 
 namespace App\Jobs;
 
+use App\GitHubSyncIssueType;
+use App\GitHubSyncResolution;
 use App\GroupStatus;
 use App\Models\ClassroomGroup;
+use App\Models\GitHubSyncIssue;
 use App\Services\GitHub\GitHubAppClient;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,15 +32,27 @@ class ProvisionClassroomGroup implements ShouldBeUnique, ShouldQueue
             ->with(['classroom', 'rosterEntries.claimedBy'])
             ->findOrFail($this->classroomGroupId);
 
-        $group->update(['status' => GroupStatus::Provisioning, 'provisioning_error' => null]);
+        $claimed = ClassroomGroup::query()
+            ->whereKey($group->id)
+            ->whereNot('status', GroupStatus::Missing)
+            ->update(['status' => GroupStatus::Provisioning, 'provisioning_error' => null]);
+
+        if ($claimed === 0) {
+            return;
+        }
+
+        $group->refresh();
 
         if ($group->github_team_id === null) {
             $team = $github->ensureTeam($group);
             $group->update([
                 'github_team_id' => (string) $team['id'],
+                'github_team_name' => $team['name'],
                 'github_team_slug' => $team['slug'],
                 'github_team_url' => $team['html_url'],
+                'github_team_missing_at' => null,
             ]);
+            $this->resolveIssues($group, GitHubSyncIssueType::TeamDeleted);
         }
 
         if ($group->github_repository_id === null) {
@@ -45,10 +60,14 @@ class ProvisionClassroomGroup implements ShouldBeUnique, ShouldQueue
             $group->update([
                 'github_repository_id' => (string) $repository['id'],
                 'github_repository_url' => $repository['html_url'],
+                'github_repository_missing_at' => null,
             ]);
+            $this->resolveIssues($group, GitHubSyncIssueType::RepositoryDeleted);
         }
 
         $github->grantTeamRepository($group);
+        $group->update(['github_team_repository_access' => true]);
+        $this->resolveIssues($group, GitHubSyncIssueType::TeamRepositoryAccessRemoved);
 
         foreach ($group->rosterEntries as $entry) {
             if ($entry->claimedBy?->github_login !== null) {
@@ -56,10 +75,7 @@ class ProvisionClassroomGroup implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        $github->triggerPagesDeployment($group);
-        $group->update(['status' => GroupStatus::Ready]);
-
-        ConfigureGitHubPages::dispatch($group->id)->delay(now()->addSeconds(30));
+        InitializeGitHubRepository::dispatch($group->id, $group->github_repository_id)->delay(now()->addSeconds(5));
     }
 
     public function uniqueId(): string
@@ -69,9 +85,24 @@ class ProvisionClassroomGroup implements ShouldBeUnique, ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        ClassroomGroup::query()->whereKey($this->classroomGroupId)->update([
-            'status' => GroupStatus::Failed,
-            'provisioning_error' => $exception?->getMessage() ?? 'GitHub provisioning failed.',
-        ]);
+        ClassroomGroup::query()
+            ->whereKey($this->classroomGroupId)
+            ->where('status', GroupStatus::Provisioning)
+            ->update([
+                'status' => GroupStatus::Failed,
+                'provisioning_error' => $exception?->getMessage() ?? 'GitHub provisioning failed.',
+            ]);
+    }
+
+    private function resolveIssues(ClassroomGroup $group, GitHubSyncIssueType $type): void
+    {
+        GitHubSyncIssue::query()
+            ->whereBelongsTo($group, 'classroomGroup')
+            ->where('type', $type)
+            ->whereNull('resolved_at')
+            ->update([
+                'resolved_at' => now(),
+                'resolution' => GitHubSyncResolution::Resynced,
+            ]);
     }
 }

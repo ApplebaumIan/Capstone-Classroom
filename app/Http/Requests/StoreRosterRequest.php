@@ -24,7 +24,7 @@ class StoreRosterRequest extends FormRequest
             404,
         );
 
-        return $classroom->github_installation_id !== null
+        return $classroom->hasActiveGitHubInstallation()
             && ! $classroom->rosterEntries()
                 ->whereNotNull('claimed_by_user_id')
                 ->where('canvas_user_id', 'not like', 'github-user-%')

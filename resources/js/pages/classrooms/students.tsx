@@ -1,6 +1,8 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import { CheckCircle2, Clipboard, Upload, UserRoundX } from 'lucide-react';
 import { useState } from 'react';
+import DeleteClassroomDialog from '@/components/delete-classroom-dialog';
+import GitHubAvatar from '@/components/github-avatar';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -37,12 +39,14 @@ type Props = {
             sections: string;
             group: string;
             github_login: string | null;
+            avatar_url: string | null;
             claimed: boolean;
         }>;
         pending_students: Array<{
             id: number;
             name: string;
             github_login: string | null;
+            avatar_url: string | null;
         }>;
         unclaimed_entries: Array<{
             id: number;
@@ -66,16 +70,19 @@ export default function Students({ classroom }: Props) {
         <>
             <Head title={`${classroom.name} Student Roster`} />
             <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <Badge variant="outline">Student Roster</Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight">
-                        {classroom.name}
-                    </h1>
-                    <p className="text-muted-foreground">
-                        {classroom.organization
-                            ? `GitHub organization: ${classroom.organization}`
-                            : 'GitHub organization not connected'}
-                    </p>
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                    <div className="space-y-2">
+                        <Badge variant="outline">Student Roster</Badge>
+                        <h1 className="text-3xl font-semibold tracking-tight">
+                            {classroom.name}
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {classroom.organization
+                                ? `GitHub organization: ${classroom.organization}`
+                                : 'GitHub organization not connected'}
+                        </p>
+                    </div>
+                    <DeleteClassroomDialog classroom={classroom} />
                 </div>
 
                 {flash.success && (
@@ -132,15 +139,23 @@ export default function Students({ classroom }: Props) {
                                 >
                                     {({ processing }) => (
                                         <>
-                                            <div>
-                                                <p className="font-medium">
-                                                    {student.name}
-                                                </p>
-                                                <p className="text-muted-foreground text-xs">
-                                                    {student.github_login
-                                                        ? `@${student.github_login}`
-                                                        : 'GitHub username unavailable'}
-                                                </p>
+                                            <div className="flex items-center gap-3">
+                                                <GitHubAvatar
+                                                    name={student.name}
+                                                    avatarUrl={
+                                                        student.avatar_url
+                                                    }
+                                                />
+                                                <div>
+                                                    <p className="font-medium">
+                                                        {student.name}
+                                                    </p>
+                                                    <p className="text-muted-foreground text-xs">
+                                                        {student.github_login
+                                                            ? `@${student.github_login}`
+                                                            : 'GitHub username unavailable'}
+                                                    </p>
+                                                </div>
                                             </div>
                                             <select
                                                 name="roster_entry_id"
@@ -306,13 +321,19 @@ export default function Students({ classroom }: Props) {
                                         key={student.id}
                                         className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] sm:items-center"
                                     >
-                                        <div className="min-w-0">
-                                            <p className="truncate font-medium">
-                                                {student.name}
-                                            </p>
-                                            <p className="text-muted-foreground truncate text-xs">
-                                                {student.sections}
-                                            </p>
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <GitHubAvatar
+                                                name={student.name}
+                                                avatarUrl={student.avatar_url}
+                                            />
+                                            <div className="min-w-0">
+                                                <p className="truncate font-medium">
+                                                    {student.name}
+                                                </p>
+                                                <p className="text-muted-foreground truncate text-xs">
+                                                    {student.sections}
+                                                </p>
+                                            </div>
                                         </div>
                                         <div className="min-w-0 text-sm">
                                             <p className="truncate">

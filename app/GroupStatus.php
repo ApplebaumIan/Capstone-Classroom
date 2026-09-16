@@ -8,4 +8,5 @@ enum GroupStatus: string
     case Provisioning = 'provisioning';
     case Ready = 'ready';
     case Failed = 'failed';
+    case Missing = 'missing';
 }
