@@ -7,6 +7,7 @@ import {
     RefreshCw,
     Settings2,
 } from 'lucide-react';
+import DeleteClassroomDialog from '@/components/delete-classroom-dialog';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -106,16 +107,19 @@ export default function Teams({ classroom }: Props) {
         <>
             <Head title={`${classroom.name} Teams`} />
             <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <Badge variant="outline">Teams</Badge>
-                    <h1 className="text-3xl font-semibold tracking-tight">
-                        {classroom.name}
-                    </h1>
-                    <p className="text-muted-foreground">
-                        {classroom.organization
-                            ? `GitHub organization: ${classroom.organization}`
-                            : 'GitHub organization not connected'}
-                    </p>
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                    <div className="space-y-2">
+                        <Badge variant="outline">Teams</Badge>
+                        <h1 className="text-3xl font-semibold tracking-tight">
+                            {classroom.name}
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {classroom.organization
+                                ? `GitHub organization: ${classroom.organization}`
+                                : 'GitHub organization not connected'}
+                        </p>
+                    </div>
+                    <DeleteClassroomDialog classroom={classroom} />
                 </div>
 
                 {flash.success && (

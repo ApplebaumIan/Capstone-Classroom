@@ -21,11 +21,11 @@ class LocalDevelopmentSeeder extends Seeder
      */
     public function run(): void
     {
-        $teacher = $this->user('local-teacher', 'Local Teacher', 'teacher@capstone.local');
-        $student = $this->user('local-student', 'Local Student', 'student@capstone.local');
-        $jordan = $this->user('jordan-lee', 'Jordan Lee', 'jordan@capstone.local');
-        $taylor = $this->user('taylor-morgan', 'Taylor Morgan', 'taylor@capstone.local');
-        $pendingStudent = $this->user('sam-rivera', 'Sam Rivera', 'sam@capstone.local');
+        $teacher = $this->user('local-teacher', 'Demo Teacher', 'teacher@capstone.local');
+        $student = $this->user('local-student', 'Demo Student', 'student@capstone.local');
+        $exampleStudentA = $this->user('example-student-a', 'Example Student A', 'student-a@capstone.local');
+        $exampleStudentB = $this->user('example-student-b', 'Example Student B', 'student-b@capstone.local');
+        $pendingStudent = $this->user('pending-student', 'Pending Student', 'pending-student@capstone.local');
 
         $classroom = Classroom::query()->updateOrCreate(
             ['teacher_id' => $teacher->id],
@@ -39,6 +39,10 @@ class LocalDevelopmentSeeder extends Seeder
                 'roster_imported_at' => now(),
             ],
         );
+
+        $classroom->pendingStudents()->detach();
+        $classroom->rosterEntries()->delete();
+        $classroom->groups()->delete();
 
         $readyGroup = $this->group($classroom, 'Local Demo Team', 'local-demo-team', GroupStatus::Ready, [
             'github_team_id' => 'local-team-1',
@@ -54,12 +58,12 @@ class LocalDevelopmentSeeder extends Seeder
             'provisioning_error' => 'GitHub repository creation timed out. Retry provisioning to test recovery.',
         ]);
 
-        $this->rosterEntry($classroom, $readyGroup, 'local-student', 'Local Student', $student);
-        $this->rosterEntry($classroom, $readyGroup, 'jordan-lee', 'Jordan Lee', $jordan);
-        $this->rosterEntry($classroom, $readyGroup, 'morgan-patel', 'Morgan Patel');
-        $this->rosterEntry($classroom, $provisioningGroup, 'taylor-morgan', 'Taylor Morgan', $taylor);
-        $this->rosterEntry($classroom, $provisioningGroup, 'casey-nguyen', 'Casey Nguyen');
-        $this->rosterEntry($classroom, $failedGroup, 'riley-garcia', 'Riley Garcia');
+        $this->rosterEntry($classroom, $readyGroup, 'local-student', 'Demo Student', $student);
+        $this->rosterEntry($classroom, $readyGroup, 'example-student-a', 'Example Student A', $exampleStudentA);
+        $this->rosterEntry($classroom, $readyGroup, 'sample-student-a', 'Sample Student A');
+        $this->rosterEntry($classroom, $provisioningGroup, 'example-student-b', 'Example Student B', $exampleStudentB);
+        $this->rosterEntry($classroom, $provisioningGroup, 'sample-student-b', 'Sample Student B');
+        $this->rosterEntry($classroom, $failedGroup, 'sample-student-c', 'Sample Student C');
         $classroom->rosterEntries()->where('claimed_by_user_id', $pendingStudent->id)->delete();
         $classroom->pendingStudents()->syncWithoutDetaching([$pendingStudent->id]);
     }

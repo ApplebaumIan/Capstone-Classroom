@@ -1,10 +1,79 @@
 {
-    "version": 1,
-    "entries": {
-        "documentation/docs/intro.mdx": {
-            "history": [],
-            "latestCommitSha": null,
-            "updatedAt": "2026-09-14T03:57:11.693Z"
+  "version": 1,
+  "entries": {
+    "documentation/docs/intro.mdx": {
+      "history": [
+        {
+          "sha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+          "commit": {
+            "author": {
+              "name": "Ian Applebaum",
+              "date": "2026-09-15T17:02:31Z"
+            },
+            "message": "Add basic getting started docs"
+          }
+        },
+        {
+          "sha": "0e5da62be70e563121ed5319fd0546906bc49eec",
+          "commit": {
+            "author": {
+              "name": "Ian Applebaum",
+              "date": "2026-09-14T04:00:20Z"
+            },
+            "message": "Add initial Docusaurus project structure and configuration"
+          }
         }
+      ],
+      "latestCommitSha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+      "updatedAt": "2026-09-15T23:53:57.829Z"
+    },
+    "documentation/docs/student-guide.mdx": {
+      "history": [
+        {
+          "sha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+          "commit": {
+            "author": {
+              "name": "Ian Applebaum",
+              "date": "2026-09-15T17:02:31Z"
+            },
+            "message": "Add basic getting started docs"
+          }
+        }
+      ],
+      "latestCommitSha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+      "updatedAt": "2026-09-15T23:53:57.961Z"
+    },
+    "documentation/docs/teacher-guide.mdx": {
+      "history": [
+        {
+          "sha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+          "commit": {
+            "author": {
+              "name": "Ian Applebaum",
+              "date": "2026-09-15T17:02:31Z"
+            },
+            "message": "Add basic getting started docs"
+          }
+        }
+      ],
+      "latestCommitSha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+      "updatedAt": "2026-09-15T23:53:58.130Z"
+    },
+    "documentation/docs/troubleshooting.mdx": {
+      "history": [
+        {
+          "sha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+          "commit": {
+            "author": {
+              "name": "Ian Applebaum",
+              "date": "2026-09-15T17:02:31Z"
+            },
+            "message": "Add basic getting started docs"
+          }
+        }
+      ],
+      "latestCommitSha": "4913efd3c68170d20a89fdf2d5fe6f1f8f656610",
+      "updatedAt": "2026-09-15T23:53:58.309Z"
     }
+  }
 }

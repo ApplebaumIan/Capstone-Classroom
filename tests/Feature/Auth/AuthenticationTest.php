@@ -59,7 +59,7 @@ test('local student bypass authenticates into the student dashboard', function (
     $this->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('mode', 'student')
-            ->where('claim.name', 'Local Student')
+            ->where('claim.name', 'Demo Student')
             ->where('claim.group.name', 'Local Demo Team'));
 });
 
@@ -71,7 +71,7 @@ test('local unlinked student bypass opens roster selection', function () {
     $response = $this->post(route('local.login', 'pending-student'));
 
     $response->assertRedirect(route('dashboard'));
-    $student = User::query()->where('email', 'sam@capstone.local')->firstOrFail();
+    $student = User::query()->where('email', 'pending-student@capstone.local')->firstOrFail();
     $this->assertAuthenticatedAs($student);
     $this->get(route('dashboard'))
         ->assertRedirect(route('classrooms.join', 'local-capstone-classroom'));
