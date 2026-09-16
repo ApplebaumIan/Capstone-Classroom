@@ -8,32 +8,48 @@ description: Set up a Capstone Classroom or join your project team in minutes.
 
 Capstone Classroom turns a class roster into ready-to-use GitHub project teams. Teachers connect one GitHub organization and share one join link. Students sign in, find their name, and Capstone Classroom handles the team, repository, access, and project site.
 
-:::tip The short version
-
-- **Teachers:** sign in, install the GitHub App, import a Canvas group CSV, and share the join link.
-- **Students:** open the link, sign in with GitHub, and select your name.
-
-:::
-
-## Choose your path
+::::note Start Here
+## Are you a teacher or student?
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 <Tabs groupId="role">
   <TabItem value="teacher" label="I am teaching" default>
+      :::tip TLDR Teachers
+      Sign in, install the GitHub App, import a Canvas group CSV, and share the join link.
+      :::
 
-Start with the [teacher setup guide](./teacher-guide). Most instructors only need a GitHub organization and a Canvas group export.
+      **Before you begin** you need:
+
+      - [ ] A GitHub account that can install apps in the course organization
+      - [ ] A GitHub organization for the class
+      - [ ] (Optional) Canvas group export CSV, unless teams will be created manually
+
+      Start with the **[teacher setup guide](./teacher-guide)**. Most instructors only need a GitHub organization and a Canvas group export.
+
 
   </TabItem>
   <TabItem value="student" label="I am a student">
+  :::tip TLDR Students
+  Open the link, sign in with GitHub, and select your name.
+  :::
 
-Open the join link from your instructor, then follow the [student guide](./student-guide). You do not need to create a repository or GitHub team yourself.
+  **Before you begin** You need:
+  - [ ] A GitHub account with an email address
+  - [ ] The classroom join link provided by your teacher
+  - [ ] Their name as it appears on the Canvas roster
+
+Open the join link from your instructor, then follow the **[student guide](./student-guide)**. You do not need to create a repository or GitHub team yourself.
+
 
   </TabItem>
 </Tabs>
 
-## What happens automatically
+::::
+
+
+## What happens automatically?
 
 When a student joins a team, Capstone Classroom:
 
@@ -44,13 +60,5 @@ When a student joins a team, Capstone Classroom:
 5. Starts the project documentation site setup.
 
 The page refreshes its status automatically while this work runs.
-
-## Before you begin
-
-| Teachers need                                                     | Students need                                 |
-| ----------------------------------------------------------------- | --------------------------------------------- |
-| A GitHub account that can install apps in the course organization | A GitHub account with an email address        |
-| A GitHub organization for the class                               | The permanent classroom join link             |
-| A Canvas group export CSV, unless teams will be created manually  | Their name as it appears on the Canvas roster |
 
 If something does not look right, see [Common questions](./troubleshooting).
