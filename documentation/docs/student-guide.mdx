@@ -1,11 +1,12 @@
 ---
 sidebar_position: 3
 title: Student guide
-description: Join a classroom and open your project workspace.
+description: Join a classroom, open your project workspace, and recover access when membership changes.
 ---
 
-import {Figure} from '@tu-cis-courses/docusaurus-components';
-import roster from '@site/static/img/guides/student-join.png'
+import { Figure } from '@tu-cis-courses/docusaurus-components';
+import roster from '@site/static/img/guides/student-join.png';
+import workspace from '@site/static/img/guides/student-workspace.png';
 
 # Join your project team
 
@@ -22,9 +23,9 @@ Use the GitHub account you want associated with your course work. It must have a
 Select your name exactly as it appears in the Canvas roster.
 
 <Figure
-  src={roster}
-  alt="Student onboarding page with Canvas roster names available to claim"
-  caption="Choose your own roster entry to connect it to your GitHub account."
+    src={roster}
+    alt="Student onboarding page with Canvas roster names available to claim"
+    caption="Choose your own roster entry to connect it to your GitHub account."
 />
 
 :::warning Check before selecting
@@ -48,4 +49,32 @@ When the status is **Ready**, use:
 - **Repository** to open the team’s source code and project workspace.
 - **Project site** to open the team’s generated documentation site when it becomes available.
 
+<Figure
+    src={workspace}
+    alt="Student dashboard showing a ready team with Repository and Project site links"
+    caption="Return to the student dashboard to open your repository and project site."
+/>
+
 You can return to Capstone Classroom later and select **Open classroom** to find these links again.
+
+## Keep access to your workspace
+
+Use the team assignment shown in Capstone Classroom. If someone adds or removes your account directly on GitHub, Capstone Classroom alerts your instructor so they can review the change.
+
+Your instructor can:
+
+- Restore the classroom assignment to GitHub.
+- Accept the GitHub change and update the classroom assignment.
+
+If your instructor accepts your removal from a GitHub team, your account returns to the classroom's pending-student list. Ask your instructor to match your GitHub account to the correct Canvas roster entry before you continue.
+
+:::info Having trouble?
+
+## Troubleshoot access
+
+- **GitHub says you do not have access:** Accept any pending organization invitation, then reopen the repository from Capstone Classroom. If access is still unavailable, contact your instructor.
+- **Your repository, team, or project site is unavailable:** Contact your instructor. They can review the team status and repair deleted GitHub resources or repository access.
+- **The classroom no longer appears:** Your instructor may have deleted its Capstone Classroom data. Classroom deletion does not delete the GitHub repository or team, so ask your instructor where to access or archive your project work.
+
+see more in [Common questions](./troubleshooting).
+:::

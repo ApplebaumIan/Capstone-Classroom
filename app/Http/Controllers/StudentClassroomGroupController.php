@@ -15,7 +15,7 @@ class StudentClassroomGroupController extends Controller
         CreateClassroomGroup $createClassroomGroup,
     ): RedirectResponse {
         $isTestingTeacher = $classroom->teacher_id === $request->user()->id;
-        abort_if($classroom->github_installation_id === null, 409, 'The classroom GitHub App is not installed.');
+        abort_unless($classroom->hasActiveGitHubInstallation(), 409, 'The classroom GitHub App is not active.');
         abort_unless($classroom->student_team_creation_enabled, 403);
         abort_unless(
             $isTestingTeacher || $classroom->pendingStudents()->whereKey($request->user()->id)->exists(),

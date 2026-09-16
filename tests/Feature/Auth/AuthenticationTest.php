@@ -4,8 +4,11 @@ use App\Models\User;
 use Database\Seeders\LocalDevelopmentSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\GithubProvider;
 use Laravel\Socialite\Two\User as GitHubUser;
 
 uses(RefreshDatabase::class);
@@ -56,7 +59,7 @@ test('local student bypass authenticates into the student dashboard', function (
     $this->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('mode', 'student')
-            ->where('claim.name', 'Local Student')
+            ->where('claim.name', 'Demo Student')
             ->where('claim.group.name', 'Local Demo Team'));
 });
 
@@ -68,7 +71,7 @@ test('local unlinked student bypass opens roster selection', function () {
     $response = $this->post(route('local.login', 'pending-student'));
 
     $response->assertRedirect(route('dashboard'));
-    $student = User::query()->where('email', 'sam@capstone.local')->firstOrFail();
+    $student = User::query()->where('email', 'pending-student@capstone.local')->firstOrFail();
     $this->assertAuthenticatedAs($student);
     $this->get(route('dashboard'))
         ->assertRedirect(route('classrooms.join', 'local-capstone-classroom'));
@@ -90,7 +93,10 @@ test('users can authenticate with github', function () {
         'avatar' => null,
     ]);
 
-    Socialite::shouldReceive('driver->user')->once()->andReturn($githubUser);
+    $provider = Mockery::mock(GithubProvider::class);
+    $provider->shouldReceive('redirectUrl')->once()->andReturnSelf();
+    $provider->shouldReceive('user')->once()->andReturn($githubUser);
+    Socialite::shouldReceive('driver')->once()->with('github')->andReturn($provider);
 
     $response = $this->get(route('github.callback'));
 
@@ -116,7 +122,10 @@ test('existing users can authenticate when github returns their id as an integer
         'email' => 'octocat@github.com',
         'avatar' => null,
     ]);
-    Socialite::shouldReceive('driver->user')->once()->andReturn($githubUser);
+    $provider = Mockery::mock(GithubProvider::class);
+    $provider->shouldReceive('redirectUrl')->once()->andReturnSelf();
+    $provider->shouldReceive('user')->once()->andReturn($githubUser);
+    Socialite::shouldReceive('driver')->once()->with('github')->andReturn($provider);
 
     $response = $this->get(route('github.callback'));
 
@@ -137,13 +146,75 @@ test('an email linked to a different github account is rejected', function () {
         'email' => 'octocat@github.com',
         'avatar' => null,
     ]);
-    Socialite::shouldReceive('driver->user')->once()->andReturn($githubUser);
+    $provider = Mockery::mock(GithubProvider::class);
+    $provider->shouldReceive('redirectUrl')->once()->andReturnSelf();
+    $provider->shouldReceive('user')->once()->andReturn($githubUser);
+    Socialite::shouldReceive('driver')->once()->with('github')->andReturn($provider);
 
     $response = $this->get(route('github.callback'));
 
     $response->assertConflict();
     $this->assertGuest();
     expect($user->fresh()->github_id)->toBe('654321');
+});
+
+test('github authorization uses the current preview callback URL', function () {
+    $provider = Mockery::mock(GithubProvider::class);
+    $provider->shouldReceive('redirectUrl')
+        ->once()
+        ->with('https://pr-123.preview.example.com/auth/github/callback')
+        ->andReturnSelf();
+    $provider->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect()->away('https://github.com/login/oauth/authorize'));
+    Socialite::shouldReceive('driver')->once()->with('github')->andReturn($provider);
+
+    $response = $this->get('https://pr-123.preview.example.com/auth/github');
+
+    $response->assertRedirect('https://github.com/login/oauth/authorize');
+});
+
+test('github setup callback stores accessible organizations without disabling oauth state', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.github.com/user/installations*' => Http::response([
+            'installations' => [[
+                'id' => 123,
+                'target_type' => 'Organization',
+                'account' => ['id' => 456, 'login' => 'temple'],
+            ]],
+        ]),
+    ]);
+    $teacher = User::factory()->create([
+        'github_id' => '123456',
+        'email' => 'octocat@github.com',
+    ]);
+    $githubUser = (new GitHubUser)->map([
+        'id' => 123456,
+        'nickname' => 'octocat',
+        'name' => 'The Octocat',
+        'email' => 'octocat@github.com',
+        'avatar' => null,
+    ]);
+    $githubUser->token = 'user-token';
+    $provider = Mockery::mock(GithubProvider::class);
+    $provider->shouldReceive('redirectUrl')->once()->andReturnSelf();
+    $provider->shouldReceive('stateless')->never();
+    $provider->shouldReceive('user')->once()->andReturn($githubUser);
+    Socialite::shouldReceive('driver')->once()->with('github')->andReturn($provider);
+
+    $response = $this->actingAs($teacher)
+        ->withSession(['github.installation_pending' => true])
+        ->get(route('github.callback'));
+
+    $response->assertRedirect(route('classrooms.create', absolute: false))
+        ->assertSessionHas('github.available_installations', [[
+            'id' => '123',
+            'account_id' => '456',
+            'login' => 'temple',
+            'avatar_url' => null,
+        ]]);
+    expect(Crypt::decryptString(session('github.user_access_token')))->toBe('user-token');
 });
 
 test('users cannot authenticate with a password', function () {

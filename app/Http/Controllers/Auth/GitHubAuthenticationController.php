@@ -16,9 +16,14 @@ use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse
 
 class GitHubAuthenticationController extends Controller
 {
-    public function redirect(): RedirectResponse|SymfonyRedirectResponse
+    public function redirect(Request $request): RedirectResponse|SymfonyRedirectResponse
     {
-        return Socialite::driver('github')->redirect();
+        $provider = Socialite::driver('github');
+        abort_unless(method_exists($provider, 'redirectUrl'), 500);
+
+        return $provider
+            ->redirectUrl($request->root().route('github.callback', absolute: false))
+            ->redirect();
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -47,25 +52,24 @@ class GitHubAuthenticationController extends Controller
         }
 
         $provider = Socialite::driver('github');
+        abort_unless(method_exists($provider, 'redirectUrl'), 500);
 
-        if ($installationPending) {
-            abort_unless(method_exists($provider, 'stateless'), 500);
-            $provider->stateless();
-        }
-
-        $githubUser = $provider->user();
+        $githubUser = $provider
+            ->redirectUrl($request->root().route('github.callback', absolute: false))
+            ->user();
         $githubId = (string) $githubUser->getId();
         $email = $githubUser->getEmail();
 
         abort_if($email === null, 422, 'Your GitHub account must have an email address.');
 
         $user = User::query()->where('github_id', $githubId)->first();
+        $user ??= User::query()->where('email', $email)->first();
 
         if ($installationPending && Auth::check() && Auth::id() !== $user?->id) {
             abort(403, 'Install the GitHub App with the same account you used to sign in.');
         }
 
-        $user ??= User::query()->where('email', $email)->firstOrNew();
+        $user ??= new User;
 
         abort_if(
             $user->github_id !== null && $user->github_id !== $githubId,
