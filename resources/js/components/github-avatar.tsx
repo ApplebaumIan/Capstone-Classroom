@@ -6,10 +6,12 @@ export default function GitHubAvatar({
     name,
     avatarUrl,
     className,
+    alt,
 }: {
     name: string;
     avatarUrl: string | null;
     className?: string;
+    alt?: string;
 }) {
     const getInitials = useInitials();
 
@@ -17,7 +19,7 @@ export default function GitHubAvatar({
         <Avatar className={cn('size-9', className)}>
             <AvatarImage
                 src={avatarUrl ?? undefined}
-                alt={`${name} GitHub profile`}
+                alt={alt ?? `${name} GitHub profile`}
             />
             <AvatarFallback>{getInitials(name)}</AvatarFallback>
         </Avatar>
