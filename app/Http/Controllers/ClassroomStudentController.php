@@ -35,6 +35,7 @@ class ClassroomStudentController extends Controller
                     'sections' => $entry->sections,
                     'group' => $entry->group->name,
                     'github_login' => $entry->claimedBy?->github_login,
+                    'avatar_url' => $entry->claimedBy?->avatar_url,
                     'claimed' => $entry->claimed_by_user_id !== null,
                 ]),
                 'pending_students' => $classroom->pendingStudents()
@@ -45,6 +46,7 @@ class ClassroomStudentController extends Controller
                         'id' => $student->id,
                         'name' => $student->name,
                         'github_login' => $student->github_login,
+                        'avatar_url' => $student->avatar_url,
                     ]),
                 'unclaimed_entries' => $rosterEntries
                     ->whereNull('claimed_by_user_id')

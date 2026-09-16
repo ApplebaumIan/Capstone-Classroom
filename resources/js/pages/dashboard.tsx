@@ -10,6 +10,7 @@ import {
     Users,
 } from 'lucide-react';
 import DeleteClassroomDialog from '@/components/delete-classroom-dialog';
+import GitHubAvatar from '@/components/github-avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -89,18 +90,27 @@ function StatusBadge({ status }: { status: Group['status'] }) {
 }
 
 function StudentDashboard({ claim }: { claim: NonNullable<Props['claim']> }) {
+    const { auth } = usePage().props;
+
     usePoll(10_000, { only: ['claim'] });
 
     return (
         <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-4 md:p-8">
-            <div className="space-y-2">
-                <Badge variant="outline">Student onboarding</Badge>
-                <h1 className="text-3xl font-semibold tracking-tight">
-                    Welcome, {claim.name}
-                </h1>
-                <p className="text-muted-foreground">
-                    {claim.classroom} · {claim.sections}
-                </p>
+            <div className="flex items-center gap-4">
+                <GitHubAvatar
+                    name={auth.user.name}
+                    avatarUrl={auth.user.avatar_url ?? null}
+                    className="size-12"
+                />
+                <div className="space-y-2">
+                    <Badge variant="outline">Student onboarding</Badge>
+                    <h1 className="text-3xl font-semibold tracking-tight">
+                        Welcome, {claim.name}
+                    </h1>
+                    <p className="text-muted-foreground">
+                        {claim.classroom} · {claim.sections}
+                    </p>
+                </div>
             </div>
             <Card>
                 <CardHeader>

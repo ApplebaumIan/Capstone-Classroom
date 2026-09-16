@@ -21,11 +21,11 @@ class LocalDevelopmentSeeder extends Seeder
      */
     public function run(): void
     {
-        $teacher = $this->user('local-teacher', 'Demo Teacher', 'teacher@capstone.local');
-        $student = $this->user('local-student', 'Demo Student', 'student@capstone.local');
-        $exampleStudentA = $this->user('example-student-a', 'Example Student A', 'student-a@capstone.local');
-        $exampleStudentB = $this->user('example-student-b', 'Example Student B', 'student-b@capstone.local');
-        $pendingStudent = $this->user('pending-student', 'Pending Student', 'pending-student@capstone.local');
+        $teacher = $this->user('local-teacher', 'Demo Teacher', 'teacher@capstone.local', 'https://avatars.githubusercontent.com/u/9919?v=4');
+        $student = $this->user('local-student', 'Demo Student', 'student@capstone.local', 'https://avatars.githubusercontent.com/u/41898282?v=4');
+        $exampleStudentA = $this->user('example-student-a', 'Example Student A', 'student-a@capstone.local', 'https://avatars.githubusercontent.com/u/49699333?v=4');
+        $exampleStudentB = $this->user('example-student-b', 'Example Student B', 'student-b@capstone.local', 'https://avatars.githubusercontent.com/u/19864447?v=4');
+        $pendingStudent = $this->user('pending-student', 'Pending Student', 'pending-student@capstone.local', 'https://avatars.githubusercontent.com/u/9919?v=4');
 
         $classroom = Classroom::query()->updateOrCreate(
             ['teacher_id' => $teacher->id],
@@ -68,13 +68,14 @@ class LocalDevelopmentSeeder extends Seeder
         $classroom->pendingStudents()->syncWithoutDetaching([$pendingStudent->id]);
     }
 
-    private function user(string $githubLogin, string $name, string $email): User
+    private function user(string $githubLogin, string $name, string $email, string $avatarUrl): User
     {
         $user = User::query()->firstOrNew(['email' => $email]);
 
         $user->forceFill([
             'github_id' => $githubLogin,
             'github_login' => $githubLogin,
+            'avatar_url' => $avatarUrl,
             'name' => $name,
             'email_verified_at' => $user->email_verified_at ?? now(),
             'password' => $user->password ?: Str::password(32),

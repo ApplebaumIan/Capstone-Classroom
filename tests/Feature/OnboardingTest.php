@@ -286,7 +286,10 @@ test('teacher sees pending github students and available roster entries', functi
     $classroom = Classroom::factory()->installed()->create();
     $group = ClassroomGroup::factory()->for($classroom)->create();
     $entry = RosterEntry::factory()->for($classroom)->for($group, 'group')->create(['name' => 'Canvas Student']);
-    $student = User::factory()->create(['github_login' => 'octocat']);
+    $student = User::factory()->create([
+        'github_login' => 'octocat',
+        'avatar_url' => 'https://avatars.example.com/octocat',
+    ]);
     $classroom->pendingStudents()->attach($student);
 
     $response = $this->actingAs($classroom->teacher)->get(route('classrooms.students', $classroom));
@@ -294,6 +297,7 @@ test('teacher sees pending github students and available roster entries', functi
     $response->assertInertia(fn (Assert $page) => $page
         ->component('classrooms/students')
         ->where('classroom.pending_students.0.github_login', 'octocat')
+        ->where('classroom.pending_students.0.avatar_url', 'https://avatars.example.com/octocat')
         ->where('classroom.unclaimed_entries.0.id', $entry->id)
         ->where('classroom.unclaimed_entries.0.group', $group->name));
 });
@@ -547,7 +551,8 @@ test('classroom owner creates a testing team without becoming an unlinked studen
     $this->get(route('classrooms.teams', $classroom))
         ->assertInertia(fn (Assert $page) => $page
             ->where('classroom.groups.0.is_testing', true)
-            ->where('classroom.groups.0.students.0.id', $entry->id));
+            ->where('classroom.groups.0.students.0.id', $entry->id)
+            ->where('classroom.groups.0.students.0.avatar_url', $teacher->avatar_url));
     $this->delete(route('roster-claims.destroy', [$classroom, $entry]))->assertNotFound();
 
     $roster = UploadedFile::fake()->createWithContent('roster.csv', rosterCsv());

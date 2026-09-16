@@ -32,7 +32,8 @@ test('local database seeding creates an installed classroom with representative 
         ->and($classroom->rosterEntries()->whereNotNull('claimed_by_user_id')->count())->toBe(3)
         ->and($classroom->pendingStudents()->where('github_id', 'pending-student')->exists())->toBeTrue()
         ->and(User::query()->where('github_id', 'local-teacher')->exists())->toBeTrue()
-        ->and(User::query()->where('github_id', 'local-student')->exists())->toBeTrue();
+        ->and(User::query()->where('github_id', 'local-student')->exists())->toBeTrue()
+        ->and(User::query()->whereNotNull('avatar_url')->count())->toBe(5);
 });
 
 test('local database reseeding replaces stale roster data with synthetic examples', function () {

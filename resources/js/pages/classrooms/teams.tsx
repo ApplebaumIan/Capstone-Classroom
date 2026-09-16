@@ -8,6 +8,7 @@ import {
     Settings2,
 } from 'lucide-react';
 import DeleteClassroomDialog from '@/components/delete-classroom-dialog';
+import GitHubAvatar from '@/components/github-avatar';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,7 @@ type Group = {
         id: number;
         name: string;
         github_login: string | null;
+        avatar_url: string | null;
         claimed: boolean;
     }>;
 };
@@ -482,14 +484,24 @@ export default function Teams({ classroom }: Props) {
                                                 key={student.id}
                                                 className="px-4 py-3"
                                             >
-                                                <p className="font-medium">
-                                                    {student.name}
-                                                </p>
-                                                <p className="text-muted-foreground text-xs">
-                                                    {student.github_login
-                                                        ? `@${student.github_login}`
-                                                        : 'Not joined'}
-                                                </p>
+                                                <div className="flex items-center gap-3">
+                                                    <GitHubAvatar
+                                                        name={student.name}
+                                                        avatarUrl={
+                                                            student.avatar_url
+                                                        }
+                                                    />
+                                                    <div>
+                                                        <p className="font-medium">
+                                                            {student.name}
+                                                        </p>
+                                                        <p className="text-muted-foreground text-xs">
+                                                            {student.github_login
+                                                                ? `@${student.github_login}`
+                                                                : 'Not joined'}
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
