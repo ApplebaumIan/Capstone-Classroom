@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import {Book, DockIcon, LayoutGrid, Plus, Users} from 'lucide-react';
+import { Book, LayoutGrid, Plus, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import GitHubAvatar from '@/components/github-avatar';
 import { NavMain } from '@/components/nav-main';
@@ -165,8 +165,7 @@ export function AppSidebar() {
                     tooltip={{ children: 'Documentation' }}
                 >
                     <Link href={'/docusaurus'} prefetch>
-
-                    <Book/>
+                        <Book />
                         <span>Documentation</span>
                     </Link>
                 </SidebarMenuButton>
