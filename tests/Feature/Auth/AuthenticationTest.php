@@ -105,7 +105,8 @@ test('users can authenticate with github', function () {
     $this->assertAuthenticatedAs($user);
     expect($user->name)->toBe('The Octocat')
         ->and($user->email)->toBe('octocat@github.com')
-        ->and($user->email_verified_at)->not->toBeNull();
+        ->and($user->email_verified_at)->not->toBeNull()
+        ->and($user->teacher_access_approved_at)->toBeNull();
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 

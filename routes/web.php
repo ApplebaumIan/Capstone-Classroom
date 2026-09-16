@@ -21,6 +21,8 @@ use App\Http\Controllers\RosterController;
 use App\Http\Controllers\RosterImportSkipController;
 use App\Http\Controllers\StudentClassroomGroupController;
 use App\Http\Controllers\StudentClassroomGroupMembershipController;
+use App\Http\Controllers\TeacherAccessApprovalController;
+use App\Http\Controllers\TeacherAccessRequestController;
 use App\Http\Middleware\VerifyGitHubWebhookSignature;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +41,9 @@ Route::post('/auth/local/{role}', LocalAuthenticationController::class)
 
 Route::middleware('auth')->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::post('teacher-access/requests', [TeacherAccessRequestController::class, 'store'])
+        ->middleware('throttle:3,60')
+        ->name('teacher-access.requests.store');
     Route::get('classrooms/create', [ClassroomController::class, 'create'])->name('classrooms.create');
     Route::post('classrooms', [ClassroomController::class, 'store'])->name('classrooms.store');
     Route::get('classrooms/{classroom}/setup', [ClassroomController::class, 'edit'])->name('classrooms.edit');
@@ -64,6 +69,13 @@ Route::middleware('auth')->group(function () {
     Route::post('classrooms/{classroom}/groups/{classroomGroup}/github-sync-issues/{githubSyncIssue}/acceptance', GitHubSyncIssueAcceptanceController::class)->name('github-sync-issue-acceptances.store');
     Route::post('classrooms/{classroom}/groups/{classroomGroup}/github-sync-issues/{githubSyncIssue}/resynchronization', GitHubSyncIssueResynchronizationController::class)->name('github-sync-issue-resynchronizations.store');
 });
+
+Route::get('teacher-access/approvals/{user}', [TeacherAccessApprovalController::class, 'show'])
+    ->middleware('signed')
+    ->name('teacher-access.approvals.show');
+Route::post('teacher-access/approvals/{user}', [TeacherAccessApprovalController::class, 'store'])
+    ->middleware('signed')
+    ->name('teacher-access.approvals.store');
 
 Route::get('/auth/github', [GitHubAuthenticationController::class, 'redirect'])
     ->middleware('guest')
