@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Classroom;
-use App\RepositoryVisibility;
+use App\Enums\RepositoryVisibility;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

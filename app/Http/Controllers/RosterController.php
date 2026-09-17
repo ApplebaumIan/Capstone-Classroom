@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\ImportRoster;
 use App\Http\Requests\StoreRosterRequest;
 use App\Models\Classroom;
-use App\RepositoryVisibility;
+use App\Enums\RepositoryVisibility;
 use Illuminate\Http\RedirectResponse;
 
 class RosterController extends Controller

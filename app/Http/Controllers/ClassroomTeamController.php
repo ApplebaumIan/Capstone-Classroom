@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\GitHubSyncIssueType;
+use App\Enums\GitHubSyncIssueType;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
 use App\Models\GitHubSyncIssue;

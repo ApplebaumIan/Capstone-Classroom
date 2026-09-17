@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\GitHubInstallationStatus;
+use App\Enums\GitHubInstallationStatus;
 use App\Models\Classroom;
-use App\RepositoryVisibility;
+use App\Enums\RepositoryVisibility;
 use App\Services\GitHub\GitHubAppClient;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;

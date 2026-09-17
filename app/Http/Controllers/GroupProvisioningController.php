@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\GroupStatus;
+use App\Enums\GroupStatus;
 use App\Jobs\ProvisionClassroomGroup;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;

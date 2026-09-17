@@ -2,7 +2,7 @@
 
 namespace App\Services\GitHub;
 
-use App\GitHubInstallationStatus;
+use App\Enums\GitHubInstallationStatus;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
 use Illuminate\Http\Client\PendingRequest;

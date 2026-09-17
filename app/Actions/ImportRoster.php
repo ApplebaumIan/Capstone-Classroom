@@ -5,7 +5,7 @@ namespace App\Actions;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
 use App\Models\RosterEntry;
-use App\RepositoryVisibility;
+use App\Enums\RepositoryVisibility;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

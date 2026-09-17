@@ -1,9 +1,9 @@
 <?php
 
-use App\GitHubInstallationStatus;
-use App\GitHubSyncIssueType;
-use App\GitHubSyncResolution;
-use App\GroupStatus;
+use App\Enums\GitHubInstallationStatus;
+use App\Enums\GitHubSyncIssueType;
+use App\Enums\GitHubSyncResolution;
+use App\Enums\GroupStatus;
 use App\Jobs\ProvisionClassroomGroup;
 use App\Jobs\ReconcileGitHubSyncIssue;
 use App\Models\Classroom;

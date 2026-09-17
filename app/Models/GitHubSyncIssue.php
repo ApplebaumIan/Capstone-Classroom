@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\GitHubSyncIssueType;
-use App\GitHubSyncResolution;
+use App\Enums\GitHubSyncIssueType;
+use App\Enums\GitHubSyncResolution;
 use Database\Factories\GitHubSyncIssueFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\GitHubInstallationStatus;
-use App\RepositoryVisibility;
+use App\Enums\GitHubInstallationStatus;
+use App\Enums\RepositoryVisibility;
 use Database\Factories\ClassroomFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;

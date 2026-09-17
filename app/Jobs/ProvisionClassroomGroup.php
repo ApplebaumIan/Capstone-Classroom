@@ -2,9 +2,9 @@
 
 namespace App\Jobs;
 
-use App\GitHubSyncIssueType;
-use App\GitHubSyncResolution;
-use App\GroupStatus;
+use App\Enums\GitHubSyncIssueType;
+use App\Enums\GitHubSyncResolution;
+use App\Enums\GroupStatus;
 use App\Models\ClassroomGroup;
 use App\Models\GitHubSyncIssue;
 use App\Services\GitHub\GitHubAppClient;

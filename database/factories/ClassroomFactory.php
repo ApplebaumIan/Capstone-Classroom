@@ -2,10 +2,10 @@
 
 namespace Database\Factories;
 
-use App\GitHubInstallationStatus;
+use App\Enums\GitHubInstallationStatus;
 use App\Models\Classroom;
 use App\Models\User;
-use App\RepositoryVisibility;
+use App\Enums\RepositoryVisibility;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
