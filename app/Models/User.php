@@ -22,6 +22,8 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
+ * @property Carbon|null $teacher_access_requested_at
+ * @property Carbon|null $teacher_access_approved_at
  * @property string $password
  * @property string|null $remember_token
  * @property Carbon|null $created_at
@@ -54,6 +56,27 @@ class User extends Authenticatable
         return $this->belongsToMany(Classroom::class, 'pending_classroom_students')->withTimestamps();
     }
 
+    public function isStudentOnly(): bool
+    {
+        return ! $this->classrooms()->exists()
+            && ($this->rosterClaims()->exists() || $this->pendingClassrooms()->exists());
+    }
+
+    public function hasTeacherAccess(): bool
+    {
+        return $this->teacher_access_approved_at !== null || $this->classrooms()->exists();
+    }
+
+    public function canCreateClassrooms(): bool
+    {
+        return $this->hasTeacherAccess() && ! $this->isStudentOnly();
+    }
+
+    public function canRequestTeacherAccess(): bool
+    {
+        return ! $this->hasTeacherAccess() && ! $this->isStudentOnly();
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -63,6 +86,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'teacher_access_requested_at' => 'datetime',
+            'teacher_access_approved_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

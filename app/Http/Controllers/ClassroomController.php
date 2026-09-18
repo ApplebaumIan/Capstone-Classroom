@@ -10,6 +10,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -19,14 +20,14 @@ class ClassroomController extends Controller
 {
     public function create(Request $request): Response
     {
-        $this->authorizeTeacherAccount($request);
+        Gate::authorize('create', Classroom::class);
 
         return $this->formResponse();
     }
 
     public function store(Request $request, GitHubAppClient $github): RedirectResponse
     {
-        $this->authorizeTeacherAccount($request);
+        Gate::authorize('create', Classroom::class);
         $validated = $this->validateClassroom($request);
         $installation = $this->resolveInstallation($request, $github, $validated['installation_id']);
 
@@ -180,16 +181,6 @@ class ClassroomController extends Controller
             })
             ->when($classroom !== null, fn ($query) => $query->whereKeyNot($classroom->id))
             ->exists();
-    }
-
-    private function authorizeTeacherAccount(Request $request): void
-    {
-        $user = $request->user();
-        $ownsClassroom = $user->classrooms()->exists();
-        $isStudentOnly = ! $ownsClassroom
-            && ($user->rosterClaims()->exists() || $user->pendingClassrooms()->exists());
-
-        abort_if($isStudentOnly, 403);
     }
 
     private function authorizeOwner(Request $request, Classroom $classroom): void

@@ -71,6 +71,13 @@ class DashboardController extends Controller
             return to_route('classrooms.join', $pendingClassroom->join_code);
         }
 
+        if (! $user->hasTeacherAccess()) {
+            return Inertia::render('dashboard', [
+                'mode' => 'teacher_access',
+                'teacher_access_requested' => $user->teacher_access_requested_at !== null,
+            ]);
+        }
+
         return Inertia::render('dashboard', [
             'mode' => 'teacher',
             'classrooms' => [],

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classroom;
 use App\Services\GitHub\GitHubAppClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
@@ -25,7 +27,7 @@ class GitHubInstallationController extends Controller
 
     public function edit(Request $request): SymfonyRedirectResponse
     {
-        $this->authorizeTeacherAccount($request);
+        Gate::authorize('create', Classroom::class);
         abort_if(blank(config('services.github.app_slug')), 503, 'The GitHub App is not configured.');
 
         return redirect()->away('https://github.com/apps/'.config('services.github.app_slug').'/installations/new');
@@ -33,7 +35,7 @@ class GitHubInstallationController extends Controller
 
     public function store(Request $request, GitHubAppClient $github): RedirectResponse
     {
-        $this->authorizeTeacherAccount($request);
+        Gate::authorize('create', Classroom::class);
         $encryptedToken = $request->session()->get('github.user_access_token');
 
         if (! is_string($encryptedToken)) {
@@ -54,7 +56,7 @@ class GitHubInstallationController extends Controller
 
     private function prepareInstallation(Request $request): void
     {
-        $this->authorizeTeacherAccount($request);
+        Gate::authorize('create', Classroom::class);
         $request->session()->put('github.installation_pending', true);
 
         if ($request->integer('classroom') === 0) {
@@ -66,16 +68,6 @@ class GitHubInstallationController extends Controller
         $classroom = $request->user()->classrooms()->findOrFail($request->integer('classroom'));
         abort_if($classroom->github_organization_id !== null, 409, 'This classroom already has a GitHub organization.');
         $request->session()->put('github.installation_classroom_id', $classroom->id);
-    }
-
-    private function authorizeTeacherAccount(Request $request): void
-    {
-        $user = $request->user();
-        $ownsClassroom = $user->classrooms()->exists();
-        $isStudentOnly = ! $ownsClassroom
-            && ($user->rosterClaims()->exists() || $user->pendingClassrooms()->exists());
-
-        abort_if($isStudentOnly, 403);
     }
 
     private function installationReturnUrl(Request $request): string

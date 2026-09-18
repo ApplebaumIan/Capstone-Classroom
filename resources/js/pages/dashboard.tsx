@@ -1,4 +1,4 @@
-import { Head, Link, usePage, usePoll } from '@inertiajs/react';
+import { Form, Head, Link, usePage, usePoll } from '@inertiajs/react';
 import {
     CheckCircle2,
     ExternalLink,
@@ -7,6 +7,7 @@ import {
     Plus,
     RefreshCw,
     School,
+    Send,
     Users,
 } from 'lucide-react';
 import DeleteClassroomDialog from '@/components/delete-classroom-dialog';
@@ -29,6 +30,7 @@ import {
     students,
     teams,
 } from '@/routes/classrooms';
+import { store as requestTeacherAccess } from '@/routes/teacher-access/requests';
 
 type Group = {
     id: number;
@@ -41,7 +43,8 @@ type Group = {
 };
 
 type Props = {
-    mode: 'teacher' | 'student';
+    mode: 'teacher' | 'student' | 'teacher_access';
+    teacher_access_requested?: boolean;
     classrooms?: TeacherClassroom[];
     claim?: {
         name: string;
@@ -161,11 +164,66 @@ function StudentDashboard({ claim }: { claim: NonNullable<Props['claim']> }) {
     );
 }
 
-export default function Dashboard({ mode, classrooms = [], claim }: Props) {
+export default function Dashboard({
+    mode,
+    classrooms = [],
+    claim,
+    teacher_access_requested = false,
+}: Props) {
     const { flash } = usePage().props;
 
     if (mode === 'student' && claim) {
         return <StudentDashboard claim={claim} />;
+    }
+
+    if (mode === 'teacher_access') {
+        return (
+            <>
+                <Head title="Request teacher access" />
+                <div className="mx-auto flex w-full max-w-3xl flex-1 items-center p-4 md:p-8">
+                    <Card className="w-full border-dashed">
+                        <CardHeader>
+                            <Badge variant="outline" className="w-fit">
+                                Teacher access
+                            </Badge>
+                            <CardTitle className="text-2xl">
+                                {teacher_access_requested
+                                    ? 'Your request is pending'
+                                    : 'Request permission to create classes'}
+                            </CardTitle>
+                            <CardDescription>
+                                {teacher_access_requested
+                                    ? 'An administrator will review your request. We will email you when classroom creation is enabled.'
+                                    : 'Classroom creation is available to approved teachers. Send a request to the administrator for review.'}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {teacher_access_requested ? (
+                                <Alert>
+                                    <Send />
+                                    <AlertTitle>Request sent</AlertTitle>
+                                    <AlertDescription>
+                                        You can return here after receiving your
+                                        approval email.
+                                    </AlertDescription>
+                                </Alert>
+                            ) : (
+                                <Form {...requestTeacherAccess.form()}>
+                                    {({ processing }) => (
+                                        <Button disabled={processing}>
+                                            <Send />
+                                            {processing
+                                                ? 'Sending request...'
+                                                : 'Request teacher access'}
+                                        </Button>
+                                    )}
+                                </Form>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </>
+        );
     }
 
     return (

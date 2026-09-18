@@ -78,6 +78,7 @@ class LocalDevelopmentSeeder extends Seeder
             'avatar_url' => $avatarUrl,
             'name' => $name,
             'email_verified_at' => $user->email_verified_at ?? now(),
+            'teacher_access_approved_at' => $user->teacher_access_approved_at ?? now(),
             'password' => $user->password ?: Str::password(32),
         ])->save();
 

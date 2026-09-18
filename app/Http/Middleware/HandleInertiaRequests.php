@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -51,8 +52,6 @@ class HandleInertiaRequests extends Middleware
                 $classrooms = $user->classrooms()
                     ->orderBy('name')
                     ->get(['id', 'name', 'github_organization_login']);
-                $isStudentOnly = $classrooms->isEmpty()
-                    && ($user->rosterClaims()->exists() || $user->pendingClassrooms()->exists());
 
                 return [
                     'classrooms' => $classrooms->map(fn ($classroom): array => [
@@ -60,7 +59,7 @@ class HandleInertiaRequests extends Middleware
                         'name' => $classroom->name,
                         'organization' => $classroom->github_organization_login,
                     ]),
-                    'can_create_classroom' => ! $isStudentOnly,
+                    'can_create_classroom' => $user->can('create', Classroom::class),
                 ];
             },
             'flash' => [
