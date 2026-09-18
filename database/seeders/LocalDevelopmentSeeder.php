@@ -3,11 +3,11 @@
 namespace Database\Seeders;
 
 use App\Enums\GroupStatus;
+use App\Enums\RepositoryVisibility;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
 use App\Models\RosterEntry;
 use App\Models\User;
-use App\Enums\RepositoryVisibility;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;

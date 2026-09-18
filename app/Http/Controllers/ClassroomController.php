@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Enums\GitHubInstallationStatus;
-use App\Models\Classroom;
 use App\Enums\RepositoryVisibility;
+use App\Models\Classroom;
 use App\Services\GitHub\GitHubAppClient;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;

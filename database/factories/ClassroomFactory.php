@@ -3,9 +3,9 @@
 namespace Database\Factories;
 
 use App\Enums\GitHubInstallationStatus;
+use App\Enums\RepositoryVisibility;
 use App\Models\Classroom;
 use App\Models\User;
-use App\Enums\RepositoryVisibility;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
