@@ -164,7 +164,7 @@ export function AppSidebar() {
                     // isActive={isCurrentUrl(item.href)}
                     tooltip={{ children: 'Documentation' }}
                 >
-                    <Link href={'/docusaurus'} prefetch>
+                    <Link href={'/docusaurus'} target={'_blank'} prefetch>
                         <Book />
                         <span>Documentation</span>
                     </Link>

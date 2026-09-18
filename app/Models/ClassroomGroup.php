@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\GroupStatus;
+use App\Enums\GroupStatus;
 use Database\Factories\ClassroomGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;

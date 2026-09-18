@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\GroupStatus;
+use App\Enums\GroupStatus;
 use App\Models\ClassroomGroup;
 use App\Services\GitHub\GitHubAppClient;
 use Illuminate\Contracts\Queue\ShouldBeUnique;

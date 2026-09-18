@@ -24,7 +24,7 @@ export default function Home() {
                         </Link>
                         <a
                             className="button button--secondary button--lg"
-                            href={`/`}
+                            href={`https://capstone-classroom.ianapplebaum.com/login`}
                             target="_blank"
                             rel="noopener noreferrer"
                         >

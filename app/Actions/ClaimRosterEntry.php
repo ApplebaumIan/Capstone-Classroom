@@ -2,7 +2,7 @@
 
 namespace App\Actions;
 
-use App\GroupStatus;
+use App\Enums\GroupStatus;
 use App\Jobs\ProvisionClassroomGroup;
 use App\Jobs\RemoveStudentFromGitHubTeam;
 use App\Models\Classroom;

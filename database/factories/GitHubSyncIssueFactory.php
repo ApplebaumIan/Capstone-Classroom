@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\GitHubSyncIssueType;
+use App\Enums\GitHubSyncIssueType;
 use App\Models\ClassroomGroup;
 use App\Models\GitHubSyncIssue;
 use Illuminate\Database\Eloquent\Factories\Factory;

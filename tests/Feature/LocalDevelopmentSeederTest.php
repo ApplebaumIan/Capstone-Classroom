@@ -1,6 +1,6 @@
 <?php
 
-use App\GroupStatus;
+use App\Enums\GroupStatus;
 use App\Models\Classroom;
 use App\Models\ClassroomGroup;
 use App\Models\RosterEntry;

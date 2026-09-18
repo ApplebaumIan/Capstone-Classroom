@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\GitHubSyncIssueType;
-use App\GitHubSyncResolution;
+use App\Enums\GitHubSyncIssueType;
+use App\Enums\GitHubSyncResolution;
 use App\Models\GitHubSyncIssue;
 use App\Services\GitHub\GitHubAppClient;
 use Illuminate\Contracts\Queue\ShouldBeUnique;

@@ -2,7 +2,7 @@
 
 namespace App\Actions;
 
-use App\GitHubSyncIssueType;
+use App\Enums\GitHubSyncIssueType;
 use App\Jobs\ReconcileGitHubSyncIssue;
 use App\Models\GitHubSyncIssue;
 

@@ -1,6 +1,6 @@
 <?php
 
-use App\GroupStatus;
+use App\Enums\GroupStatus;
 use App\Jobs\ConfigureGitHubPages;
 use App\Jobs\InitializeGitHubRepository;
 use App\Jobs\ProvisionClassroomGroup;
