@@ -73,6 +73,6 @@ Route::get('/auth/github/callback', [GitHubAuthenticationController::class, 'cal
 
 // Redirect /docusaurus to github pages
 Route::get('/docusaurus', function () {
-    return redirect('https://docusaurus.com/');
+    return redirect('https://applebaumian.github.io/Capstone-Classroom/');
 })
     ->name('docusaurus');
