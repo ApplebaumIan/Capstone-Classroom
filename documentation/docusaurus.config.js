@@ -7,4 +7,5 @@ const {
 module.exports = createProjectDocsConfig({
     siteDir: __dirname,
     tagline: 'Scaffold Project based CIS courses in minutes.',
+    logo: '/img/logo.png',
 });
