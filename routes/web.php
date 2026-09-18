@@ -70,3 +70,9 @@ Route::get('/auth/github', [GitHubAuthenticationController::class, 'redirect'])
     ->name('github.redirect');
 Route::get('/auth/github/callback', [GitHubAuthenticationController::class, 'callback'])
     ->name('github.callback');
+
+// Redirect /docusaurus to github pages
+Route::get('/docusaurus', function () {
+    return redirect('https://docusaurus.com/');
+})
+    ->name('docusaurus');

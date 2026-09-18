@@ -6,8 +6,5 @@ const {
 
 module.exports = createProjectDocsConfig({
     siteDir: __dirname,
-    organizationName: `applebaumian`,
-    projectName: 'capstone-classroom',
     tagline: 'Scaffold Project based CIS courses in minutes.',
-    baseUrl: '/docusaurus',
 });
